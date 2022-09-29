@@ -150,6 +150,7 @@ wandb
 *.prof
 *.tar.gz
 .neptune/
+.pth
 
 # dataset generated from bolts in examples.
 cifar-10-batches-py
