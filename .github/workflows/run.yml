@@ -1,0 +1,22 @@
+name: nbdiff-web-exporter
+on: [pull_request]
+
+jobs:
+  diff-action-test:
+    runs-on: ubuntu-latest
+    name: diff notebooks
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: diff notebooks
+        uses: kuromt/diff-notebooks
+        id: nbdiff-web-exporter-action
+        with:
+          remote: "origin/diff-notebooks"
+          export_dir: "./artifacts"
+      - uses: actions/upload-artifact@v2
+        with:
+          name: diff-notebooks
+          path: ${{steps.nbdiff-web-exporter-action.outputs.export_dir}}
