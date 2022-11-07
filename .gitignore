@@ -12,6 +12,12 @@ lightning_logs/
 .wav
 .json
 
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+.github
+
 # C extensions
 *.so
 
@@ -36,3 +42,7 @@ wandb
 .neptune/
 # *.pth
 *.pt
+
+# IDEs
+.idea
+.vscode
