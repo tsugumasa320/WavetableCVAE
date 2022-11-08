@@ -45,7 +45,7 @@ python demo.py
 
 * 作成者: 湯谷承将(Tsugumasa Yutani)
 * 所属: 筑波大学 大学院人間総合科学学術院 人間総合科学研究群 情報学学位プログラム
-* 研究室: Laboratory for Sound with Computing
+* 研究室: [Laboratory for Sound with Computing](https://lspc.slis.tsukuba.ac.jp/)
 * E-mail: tsugumasa320@gmail.com
 
 # License
