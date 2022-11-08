@@ -123,9 +123,16 @@ class LitAutoEncoder(pl.LightningModule):
     def _conditioning(self, x:torch.Tensor, attrs:dict, size:int) -> torch.Tensor:
 
         device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        bright = ((attrs["brightness"]/50)-1).clone().detach() #-1~1に正規化
-        rough = ((attrs["roughness"]/50)-1).clone().detach()
-        depth = ((attrs["depth"]/50)-1).clone().detach()
+        
+        # model.loadした時にエラーが出る
+        #bright = ((attrs["brightness"]/50)-1).clone().detach() #-1~1に正規化
+        #rough = ((attrs["roughness"]/50)-1).clone().detach()
+        #depth = ((attrs["depth"]/50)-1).clone().detach()
+
+        # Warningは出るがエラーは出ないので仮置き
+        bright = torch.tensor((attrs["brightness"]/50)-1) #-1~1に正規化
+        rough = torch.tensor((attrs["roughness"]/50)-1)
+        depth = torch.tensor((attrs["depth"]/50)-1)
         
         y = torch.ones([x.shape[0], size, x.shape[2]]).permute(2,1,0) #[600,1,32] or [140,256,32]
         bright_y = y.to(device) * bright.to(device) # [D,C,B]*[B]
