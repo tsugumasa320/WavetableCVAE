@@ -1,7 +1,5 @@
 # VAE4Wavetable
 
-VAEを用いて、Wavetable合成における意味的なTableの生成を可能にする
-
 # DEMO
 
 WIP
