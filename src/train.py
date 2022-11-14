@@ -3,12 +3,12 @@ import torch
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 
-from utils import torch_fix_seed
+from utils import torch_fix_seed, model_save
 from dataio.AKWDDataModule import AWKDDataModule
 from models.VAE4Wavetable import LitAutoEncoder
 from models.components.Callbacks import MyPrintingCallback
 
-def train(epoch:int, batch_size:int, data_dir:str, test:bool=False, resume:bool=False, seed:int=42):
+def train(epoch:int, batch_size:int, data_dir:str, test:bool=False, resume:bool=False,save:bool=False, seed:int=42):
     torch_fix_seed(seed)
     # Datamodule
     dm = AWKDDataModule(batch_size=batch_size, data_dir=data_dir)
@@ -41,9 +41,14 @@ def train(epoch:int, batch_size:int, data_dir:str, test:bool=False, resume:bool=
         trainer.test(model, dm,)
         model.train()
 
+    if save:
+        cwd = os.getcwd()
+        model_save_path = f"{cwd}/data/pt" # 保存先
+        model_save(model, model_save_path, comment="xxepoch-test")
     print("Training...")
 
 if __name__ == '__main__':
  
-    train(epoch=1, batch_size=32, data_dir="data/AKWF_44k1_600s", test=False, resume=False, seed=42)
+    train(epoch=1, batch_size=32, data_dir="data/AKWF_44k1_600s", test=False, resume=False,save=True, seed=42)
+
     print("Done!")
