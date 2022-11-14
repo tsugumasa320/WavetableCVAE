@@ -11,6 +11,8 @@ lightning_logs/
 .mp3
 .wav
 .json
+.a
+.app
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
