@@ -55,7 +55,7 @@ class LitAutoEncoder(pl.LightningModule):
 
         mu, log_var = self.encode(x)
         hidden = self.reparametrize(mu, log_var)
-        hidden = self._conditioning(hidden,attrs,size=10)
+        hidden = self._conditioning(hidden,attrs,size=5)
         output = self.decode(hidden)# * torch.tensor(np.hanning(600)).to(device)
         return mu, log_var, output
 
@@ -130,19 +130,49 @@ class LitAutoEncoder(pl.LightningModule):
         #depth = ((attrs["depth"]/50)-1).clone().detach()
 
         # Warningは出るがエラーは出ないので仮置き
-        bright = torch.tensor((attrs["brightness"]/50)-1) #-1~1に正規化
-        rough = torch.tensor((attrs["roughness"]/50)-1)
-        depth = torch.tensor((attrs["depth"]/50)-1)
+        #bright = torch.tensor((attrs["brightness"]/50)-1) #-1~1に正規化
+        #rough = torch.tensor((attrs["roughness"]/50)-1)
+        #depth = torch.tensor((attrs["depth"]/50)-1)
+
+        Centroid = torch.tensor((attrs["SpectralCentroid"])*2-1)
+        Spread = torch.tensor((attrs["SpectralSpread"])*2-1)
+        Kurtosis = torch.tensor((attrs["SpectralKurtosis"])*2-1)
+        ZeroX = torch.tensor((attrs["ZeroCrossingRate"])*2-1)
+        Complex = torch.tensor((attrs["SpectralComplexity"])*2-1)
+        OddEven = torch.tensor((attrs["OddToEvenHarmonicEnergyRatio"])*2-1)
+        Dissonance = torch.tensor((attrs["Dissonance"])*2-1)
+        PitchSalience = torch.tensor((attrs["PitchSalience"])*2-1)
+        Hnr = torch.tensor((attrs["HNR"])*2-1)
         
         y = torch.ones([x.shape[0], size, x.shape[2]]).permute(2,1,0) #[600,1,32] or [140,256,32]
-        bright_y = y.to(device) * bright.to(device) # [D,C,B]*[B]
-        rough_y = y.to(device) * rough.to(device)
-        depth_y = y.to(device) * depth.to(device)
+        #bright_y = y.to(device) * bright.to(device) # [D,C,B]*[B]
+        #rough_y = y.to(device) * rough.to(device)
+        #depth_y = y.to(device) * depth.to(device)
         
+        Centroid_y = y.to(device) * Centroid.to(device)
+        Spread_y = y.to(device) * Spread.to(device)
+        Kurtosis_y = y.to(device) * Kurtosis.to(device)
+        ZeroX_y = y.to(device) * ZeroX.to(device)
+        Complex_y = y.to(device) * Complex.to(device)
+        OddEven_y = y.to(device) * OddEven.to(device)
+        Dissonance_y = y.to(device) * Dissonance.to(device)
+        PitchSalience_y = y.to(device) * PitchSalience.to(device)
+        Hnr_y = y.to(device) * Hnr.to(device)
+
         x = x.to(device)
-        x = torch.cat([x, bright_y.permute(2,1,0)], dim=1).to(torch.float32) 
-        x = torch.cat([x, rough_y.permute(2,1,0)], dim=1).to(torch.float32) 
-        x = torch.cat([x, depth_y.permute(2,1,0)], dim=1).to(torch.float32) 
+        #x = torch.cat([x, bright_y.permute(2,1,0)], dim=1).to(torch.float32) 
+        #x = torch.cat([x, rough_y.permute(2,1,0)], dim=1).to(torch.float32) 
+        #x = torch.cat([x, depth_y.permute(2,1,0)], dim=1).to(torch.float32) 
+        x = torch.cat([x, Centroid_y.permute(2,1,0)], dim=1).to(torch.float32)
+        x = torch.cat([x, Spread_y.permute(2,1,0)], dim=1).to(torch.float32)
+        x = torch.cat([x, Kurtosis_y.permute(2,1,0)], dim=1).to(torch.float32)
+        x = torch.cat([x, ZeroX_y.permute(2,1,0)], dim=1).to(torch.float32)
+        x = torch.cat([x, Complex_y.permute(2,1,0)], dim=1).to(torch.float32)
+        x = torch.cat([x, OddEven_y.permute(2,1,0)], dim=1).to(torch.float32)
+        x = torch.cat([x, Dissonance_y.permute(2,1,0)], dim=1).to(torch.float32)
+        x = torch.cat([x, PitchSalience_y.permute(2,1,0)], dim=1).to(torch.float32)
+        x = torch.cat([x, Hnr_y.permute(2,1,0)], dim=1).to(torch.float32)
+
         #print(x.shape)
         
         return x
