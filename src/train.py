@@ -20,7 +20,7 @@ def train(epoch:int, batch_size:int, data_dir:str, test:bool=False, resume:bool=
 
     # Trainer
 
-    if device == "gpu":
+    if device == "cuda":
         trainer = pl.Trainer(
             max_epochs=epoch , enable_checkpointing=True, log_every_n_steps=1, callbacks=[MyPrintingCallback()],
             auto_lr_find = True, auto_scale_batch_size = True, accelerator='gpu', devices=1,
