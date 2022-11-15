@@ -6,10 +6,8 @@ def find_latest_checkpoints(checkpoint_dir):
     else:
         return ckpts[-1]
 
-checkpoint_dir = "lightning_logs/*/checkpoints"
-resume_ckpt = find_latest_checkpoints(checkpoint_dir)
-
 if __name__ == '__main__':
-    find_latest_checkpoints(checkpoint_dir)
+    checkpoint_dir = "lightning_logs/*/checkpoints"
+    resume_ckpt = find_latest_checkpoints(checkpoint_dir)
     # Todo: パスの指定のさせ方を考える
     print(resume_ckpt)
