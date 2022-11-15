@@ -10,7 +10,7 @@ root = pyrootutils.setup_root(
 from pathlib import Path
 import glob
 
-def find_latest_checkpoints(ckpt_dir):
+def find_latest_checkpoints(ckpt_dir:Path):
     ckpts = sorted(glob.glob(str(Path(ckpt_dir / "*.ckpt"))))
     if len(ckpts) == 0:
         return None

@@ -17,7 +17,7 @@ import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 
 from utils import torch_fix_seed, model_save
-from dataio.AKWDDataModule import AWKDDataModule
+from dataio.DataModule import AWKDDataModule
 from models.VAE4Wavetable import LitAutoEncoder
 from models.components.Callbacks import MyPrintingCallback
 from tools.Find_latest_checkpoints import find_latest_checkpoints
@@ -59,13 +59,13 @@ def train(epoch:int, batch_size:int, data_dir:str, test:bool=False, resume:bool=
         model.train()
 
     if save:
-        #cwd = os.getcwd()
         save_path = root / "data/pt"
-        #save_path = f"{cwd}/data/pt" # 保存先
         model_save(model, save_path, comment="xxepoch-test")
+        print(save_path)
+
     print("Training...")
 
 if __name__ == '__main__':
 
-    train(epoch=10000, batch_size=32, data_dir="data/AKWF_44k1_600s", test=False, resume=True,save=True, seed=42)
+    train(epoch=1, batch_size=32, data_dir=data_dir, test=False, resume=False,save=True, seed=42)
     print("Done!")

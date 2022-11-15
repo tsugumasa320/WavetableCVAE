@@ -42,3 +42,5 @@ def on_train_end_notification(model: pl.LightningModule, comment:str)-> None:
     comment = f'{d_today}-{t_now}-{model_name}-{comment}の学習終了！'
     LINENotification(comment)
 
+if __name__ == '__main__':
+    LINENotification("test")

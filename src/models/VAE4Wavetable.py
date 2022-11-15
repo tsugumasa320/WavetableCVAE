@@ -1,11 +1,9 @@
 import pytorch_lightning as pl
 import torch
-from dataio.AKWDDataModule import AWKDDataModule
 import torch.nn as nn
 import torchaudio
 from typing import Any, Callable, Dict, List, Optional, Tuple
-from models.components.Submodule import Loudness,decoder
-
+from .components import Submodule
 
 class LitAutoEncoder(pl.LightningModule):
     
@@ -46,8 +44,8 @@ class LitAutoEncoder(pl.LightningModule):
                                                        power=2.0)
         
         self.ToDB =  torchaudio.transforms.AmplitudeToDB(stype = 'magnitude',top_db = 80)
-        self.loudness = Loudness(44100, 600)
-        self.decoder = nn.Sequential(*decoder())
+        self.loudness = Submodule.Loudness(44100, 600)
+        self.decoder = nn.Sequential(*Submodule.decoder())
         #self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
