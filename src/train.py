@@ -49,6 +49,6 @@ def train(epoch:int, batch_size:int, data_dir:str, test:bool=False, resume:bool=
 
 if __name__ == '__main__':
  
-    train(epoch=1, batch_size=32, data_dir="data/AKWF_44k1_600s", test=False, resume=False,save=True, seed=42)
+    train(epoch=10000, batch_size=32, data_dir="data/AKWF_44k1_600s", test=False, resume=False,save=True, seed=42)
 
     print("Done!")
