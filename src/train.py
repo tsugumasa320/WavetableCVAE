@@ -7,6 +7,7 @@ from utils import torch_fix_seed, model_save
 from dataio.AKWDDataModule import AWKDDataModule
 from models.VAE4Wavetable import LitAutoEncoder
 from models.components.Callbacks import MyPrintingCallback
+from tools.Find_latest_checkpoints import find_latest_checkpoints
 
 def train(epoch:int, batch_size:int, data_dir:str, test:bool=False, resume:bool=False,save:bool=False, seed:int=42):
     torch_fix_seed(seed)
@@ -32,6 +33,8 @@ def train(epoch:int, batch_size:int, data_dir:str, test:bool=False, resume:bool=
         )
 
     if resume:
+        checkpoint_dir = "lightning_logs/*/checkpoints"
+        resume_ckpt = find_latest_checkpoints(checkpoint_dir)
         trainer.fit(model, dm ,ckpt_path=resume_ckpt)
     else:
         trainer.fit(model, dm )
@@ -49,6 +52,6 @@ def train(epoch:int, batch_size:int, data_dir:str, test:bool=False, resume:bool=
 
 if __name__ == '__main__':
  
-    train(epoch=1, batch_size=32, data_dir="data/AKWF_44k1_600s", test=False, resume=False,save=True, seed=42)
+    train(epoch=10000, batch_size=32, data_dir="data/AKWF_44k1_600s", test=False, resume=True,save=True, seed=42)
 
     print("Done!")
