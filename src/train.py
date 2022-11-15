@@ -1,3 +1,16 @@
+import pyrootutils
+
+root = pyrootutils.setup_root(
+    search_from=__file__,
+    indicator=["README.md","LICENSE",".git"],
+    pythonpath=True,
+    #dotenv=True,
+)
+data_dir = root / "data/AKWF_44k1_600s"
+
+
+assert data_dir.exists(), f"path doesn't exist: {data_dir}"
+
 import os
 import torch
 import pytorch_lightning as pl
@@ -8,6 +21,7 @@ from dataio.AKWDDataModule import AWKDDataModule
 from models.VAE4Wavetable import LitAutoEncoder
 from models.components.Callbacks import MyPrintingCallback
 from tools.Find_latest_checkpoints import find_latest_checkpoints
+
 
 def train(epoch:int, batch_size:int, data_dir:str, test:bool=False, resume:bool=False,save:bool=False, seed:int=42):
     torch_fix_seed(seed)
@@ -33,8 +47,8 @@ def train(epoch:int, batch_size:int, data_dir:str, test:bool=False, resume:bool=
         )
 
     if resume:
-        checkpoint_dir = "lightning_logs/*/checkpoints"
-        resume_ckpt = find_latest_checkpoints(checkpoint_dir)
+        ckpt_dir = root / "lightning_logs/*/checkpoints"
+        resume_ckpt = find_latest_checkpoints(ckpt_dir)
         trainer.fit(model, dm ,ckpt_path=resume_ckpt)
     else:
         trainer.fit(model, dm )
@@ -45,13 +59,14 @@ def train(epoch:int, batch_size:int, data_dir:str, test:bool=False, resume:bool=
         model.train()
 
     if save:
-        cwd = os.getcwd()
-        model_save_path = f"{cwd}/data/pt" # 保存先
-        model_save(model, model_save_path, comment="xxepoch-test")
+        #cwd = os.getcwd()
+        save_path = root / "data/pt"
+        #save_path = f"{cwd}/data/pt" # 保存先
+        model_save(model, save_path, comment="xxepoch-test")
     print("Training...")
 
 if __name__ == '__main__':
  
-    train(epoch=10000, batch_size=32, data_dir="data/AKWF_44k1_600s", test=False, resume=True,save=True, seed=42)
+    train(epoch=1, batch_size=32, data_dir=data_dir, test=False, resume=True,save=True, seed=42)
 
     print("Done!")
