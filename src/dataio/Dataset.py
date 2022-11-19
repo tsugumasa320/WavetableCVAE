@@ -19,7 +19,7 @@ class AKWDDataset(torch.utils.data.Dataset):
     # Link : https://www.adventurekid.se/akrt/waveforms/adventure-kid-waveforms/
     # deleated streo data. (200data)
 
-    def __init__(self, root:str,download:bool = False):
+    def __init__(self, root:str,download:bool = True):
         super().__init__()
         self.root = root
 
@@ -66,7 +66,7 @@ class AKWDDataset(torch.utils.data.Dataset):
             # この辺のパスの与え方は修正したい.良い方法を考える
             UNPACK_PATH = os.path.join(cwd, "data")
             DOWNLOAD_PATH = os.path.join(UNPACK_PATH, DOWNLOAD_NAME)
-            ID = "1i3RJiuAwm9xGcBZ7CWbPT1iTjegEn1Hi"
+            ID = "1XNTe_b8I19jzHrTGMJKUeyTj7QdjoK-v"
             URL = "https://drive.google.com/uc?id=" + ID
 
             #if os.path.exists(os.path.join(cwd, DOWNLOAD_NAME)):

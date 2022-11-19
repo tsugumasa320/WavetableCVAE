@@ -8,9 +8,6 @@ root = pyrootutils.setup_root(
 )
 data_dir = root / "data/AKWF_44k1_600s"
 
-
-assert data_dir.exists(), f"path doesn't exist: {data_dir}"
-
 import os
 import torch
 import pytorch_lightning as pl
@@ -67,5 +64,5 @@ def train(epoch:int, batch_size:int, data_dir:str, test:bool=False, resume:bool=
 
 if __name__ == '__main__':
 
-    train(epoch=1, batch_size=32, data_dir=data_dir, test=False, resume=False,save=True, seed=42)
+    train(epoch=10000, batch_size=32, data_dir=data_dir, test=False, resume=False,save=True, seed=42)
     print("Done!")

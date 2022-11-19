@@ -37,19 +37,12 @@ WIP
 └── README.md
 ```
 
-
-
 WIP
-* torch
-* torchaudio
-* pytorch_lightning
 
 # Installation
 
-Requirementで列挙したライブラリなどのインストール方法を説明する
-
 ```bash
-pip install huga_package
+pip install -r requirements.txt
 ```
 
 # Usage
@@ -57,9 +50,8 @@ pip install huga_package
 DEMOの実行方法など、"hoge"の基本的な使い方を説明する
 
 ```bash
-git clone https://github.com/hoge/~
-cd examples
-python demo.py
+git clone https://github.com/tsugumasa320/My-reserch-project/
+python ./src/train.py
 ```
 
 # Note

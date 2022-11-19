@@ -14,6 +14,9 @@ lightning_logs/
 *.a
 *.app
 build/
+data/
+*.out
+nohup.out
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -43,10 +46,3 @@ wandb
 .forked/
 *.prof
 *.tar.gz
-.neptune/
-# *.pth
-*.pt
-
-# IDEs
-.idea
-.vscode

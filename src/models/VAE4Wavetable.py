@@ -123,24 +123,24 @@ class LitAutoEncoder(pl.LightningModule):
         device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         
         # model.loadした時にエラーが出る
-        #bright = ((attrs["brightness"]/50)-1).clone().detach() #-1~1に正規化
-        #rough = ((attrs["roughness"]/50)-1).clone().detach()
-        #depth = ((attrs["depth"]/50)-1).clone().detach()
+        #bright = ((attrs["brightness"]/100).clone().detach() # 0~1に正規化
+        #rough = ((attrs["roughness"]/100).clone().detach()
+        #depth = ((attrs["depth"]/100).clone().detach()
 
         # Warningは出るがエラーは出ないので仮置き
-        #bright = torch.tensor((attrs["brightness"]/50)-1) #-1~1に正規化
-        #rough = torch.tensor((attrs["roughness"]/50)-1)
-        #depth = torch.tensor((attrs["depth"]/50)-1)
+        #bright = torch.tensor(attrs["brightness"]/100) # 0~1に正規化
+        #rough = torch.tensor(attrs["roughness"]/100)
+        #depth = torch.tensor(attrs["depth"]/100)
 
-        Centroid = torch.tensor((attrs["SpectralCentroid"])*2-1)
-        Spread = torch.tensor((attrs["SpectralSpread"])*2-1)
-        Kurtosis = torch.tensor((attrs["SpectralKurtosis"])*2-1)
-        ZeroX = torch.tensor((attrs["ZeroCrossingRate"])*2-1)
-        Complex = torch.tensor((attrs["SpectralComplexity"])*2-1)
-        OddEven = torch.tensor((attrs["OddToEvenHarmonicEnergyRatio"])*2-1)
-        Dissonance = torch.tensor((attrs["Dissonance"])*2-1)
-        PitchSalience = torch.tensor((attrs["PitchSalience"])*2-1)
-        Hnr = torch.tensor((attrs["HNR"])*2-1)
+        Centroid = torch.tensor(attrs["SpectralCentroid"])
+        Spread = torch.tensor(attrs["SpectralSpread"])
+        Kurtosis = torch.tensor(attrs["SpectralKurtosis"])
+        ZeroX = torch.tensor(attrs["ZeroCrossingRate"])
+        Complex = torch.tensor(attrs["SpectralComplexity"])
+        OddEven = torch.tensor(attrs["OddToEvenHarmonicEnergyRatio"])
+        Dissonance = torch.tensor(attrs["Dissonance"])
+        PitchSalience = torch.tensor(attrs["PitchSalience"])
+        Hnr = torch.tensor(attrs["HNR"])
         
         y = torch.ones([x.shape[0], size, x.shape[2]]).permute(2,1,0) #[600,1,32] or [140,256,32]
         #bright_y = y.to(device) * bright.to(device) # [D,C,B]*[B]
