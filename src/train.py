@@ -37,11 +37,13 @@ def train(epoch:int, batch_size:int, data_dir:str, test:bool=False, resume:bool=
             max_epochs=epoch , enable_checkpointing=True, log_every_n_steps=1, callbacks=[MyPrintingCallback()],
             auto_lr_find = True, auto_scale_batch_size = True, accelerator='gpu', devices=1,
         )
-    if device == "cpu":
+    elif device == "cpu":
         trainer = pl.Trainer(
             max_epochs=epoch , enable_checkpointing=True, log_every_n_steps=1, callbacks=[MyPrintingCallback()],
             auto_lr_find = True, auto_scale_batch_size = True, accelerator='cpu',
         )
+    else:
+        raise ValueError("Device Error")
 
     if resume:
         ckpt_dir = root / "lightning_logs/*/checkpoints"
@@ -56,13 +58,13 @@ def train(epoch:int, batch_size:int, data_dir:str, test:bool=False, resume:bool=
         model.train()
 
     if save:
-        save_path = root / "data/pt"
-        model_save(model, save_path, comment="xxepoch-test")
+        save_path = root / "torchscript"
+        model_save(model, save_path, comment=str(epoch)+"epoch")
         print(save_path)
 
     print("Training...")
 
 if __name__ == '__main__':
 
-    train(epoch=10000, batch_size=32, data_dir=data_dir, test=False, resume=False,save=True, seed=42)
+    train(epoch=1, batch_size=32, data_dir=data_dir, test=False, resume=False,save=True, seed=42)
     print("Done!")
