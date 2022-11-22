@@ -1,0 +1,5 @@
+experiment_name: 'VAE4Wavetable'
+model: 'RavelikeModel'
+epoch: 100
+batch_size: 32
+savename: 'Ravelike.pt'
