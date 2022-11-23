@@ -8,6 +8,10 @@ import torchaudio
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from pathlib import Path
 
+import platform
+if platform.system() == 'Linux':
+  import esssentia.standard as ess
+
 import json
 from os import path
 
@@ -45,6 +49,8 @@ class AKWDDataset(torch.utils.data.Dataset):
 
         #入力
         audio, sample_rate = torchaudio.load(self.wave_paths[idx])
+        if platform.system() == 'Linux':
+          ess_audio = ess.MonoLoader(filename=self.wave_paths[idx])()
         
         # wave_paths[idx]
         with open(f'{self.root}/labels/{Path(self.wave_paths[idx]).stem}_analysis.json', 'r') as fp:
@@ -52,6 +58,7 @@ class AKWDDataset(torch.utils.data.Dataset):
 
         #attrs['audio'] = waveform
         attrs['name'] = Path(self.wave_paths[idx]).name
+        attrs['ess_audio'] = ess_audio
 
         return audio , attrs
 
