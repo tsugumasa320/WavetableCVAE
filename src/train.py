@@ -20,14 +20,14 @@ from models.components.Callbacks import MyPrintingCallback
 from tools.Find_latest_checkpoints import find_latest_checkpoints
 
 
-def train(epoch:int, batch_size:int, data_dir:str, test:bool=False, resume:bool=False,save:bool=False, seed:int=42):
+def train(epoch:int, batch_size:int, data_dir:str, test:bool=False, resume:bool=False,save:bool=False, seed:int=42,comment:str=""):
     torch_fix_seed(seed)
     # Datamodule
     dm = AWKDDataModule(batch_size=batch_size, data_dir=data_dir)
     # Model
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Device: {device}")
-    model = LitAutoEncoder(sample_points = 600, hidden_dim = 512, embed_dim = 140, beta = 0.1) #44k1 Conv #hidden_dimは使ってない
+    model = LitAutoEncoder(sample_points = 600, hidden_dim = 512, embed_dim = 140, beta = 1) #44k1 Conv #hidden_dimは使ってない
     model = model.to(device)
 
     # Trainer
@@ -59,12 +59,13 @@ def train(epoch:int, batch_size:int, data_dir:str, test:bool=False, resume:bool=
 
     if save:
         save_path = root / "torchscript"
-        model_save(model, save_path, comment=str(epoch)+"epoch")
+        model_save(model, save_path, comment=str(epoch)+"epoch"+comment)
         print(save_path)
 
     print("Training...")
 
 if __name__ == '__main__':
 
-    train(epoch=1, batch_size=32, data_dir=data_dir, test=False, resume=False,save=True, seed=42)
+    train(epoch=10000, batch_size=32, data_dir=data_dir, test=False, resume=True,save=True, seed=42, comment="-ess-yeojohnson-beta1")
     print("Done!")
+    

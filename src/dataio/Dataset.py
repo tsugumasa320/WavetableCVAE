@@ -74,7 +74,8 @@ class AKWDDataset(torch.utils.data.Dataset):
             # この辺のパスの与え方は修正したい.良い方法を考える
             UNPACK_PATH = os.path.join(cwd, "data")
             DOWNLOAD_PATH = os.path.join(UNPACK_PATH, DOWNLOAD_NAME)
-            ID = "1XNTe_b8I19jzHrTGMJKUeyTj7QdjoK-v"
+            #ID = "1-IZokWDA4d1Q0ZsWzs4gT1pyI6zD2BrU" #ess_minmax
+            ID = "1-GYT1gFf-bmiUWMCamydHF-h6D83AzTo" #ess_yeojohnson
             URL = "https://drive.google.com/uc?id=" + ID
 
             #if os.path.exists(os.path.join(cwd, DOWNLOAD_NAME)):
