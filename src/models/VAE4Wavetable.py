@@ -16,7 +16,7 @@ class LitAutoEncoder(pl.LightningModule):
         #self.logging_graph_flg = True
 
         self.encoder = nn.Sequential(
-            nn.Conv1d(in_channels=1, out_channels=64, kernel_size=9, stride=1, padding=0), nn.LeakyReLU(),
+            nn.Conv1d(in_channels=1+9, out_channels=64, kernel_size=9, stride=1, padding=0), nn.LeakyReLU(),
             nn.BatchNorm1d(64),
             nn.Conv1d(in_channels=64, out_channels=128, kernel_size=9, stride=1, padding=0), nn.LeakyReLU(),
             nn.BatchNorm1d(128),
@@ -51,9 +51,10 @@ class LitAutoEncoder(pl.LightningModule):
 
     def forward(self, x: torch.Tensor, attrs:dict)->Tuple[torch.Tensor,torch.Tensor,torch.Tensor]: # Use for inference only (separate from training_step)
 
+        x = self._conditioning(x, attrs,size=1)
         mu, log_var = self.encode(x)
         hidden = self.reparametrize(mu, log_var)
-        hidden = self._conditioning(hidden,attrs,size=5)
+        hidden = self._conditioning(hidden,attrs,size=1)
         output = self.decode(hidden)# * torch.tensor(np.hanning(600)).to(device)
         return mu, log_var, output
 

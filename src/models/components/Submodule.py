@@ -50,7 +50,7 @@ class ResBlock(nn.Module):
 def decoder():
     upSampling1 = nn.Sequential(
         nn.LeakyReLU(.2),
-        nn.ConvTranspose1d(in_channels=128+45, out_channels=64, kernel_size=8, stride=2, padding=0),
+        nn.ConvTranspose1d(in_channels=128+9, out_channels=64, kernel_size=8, stride=2, padding=0),
     )
     res_block1 = nn.Sequential(
         ResBlock(64),ResBlock(64),ResBlock(64),
