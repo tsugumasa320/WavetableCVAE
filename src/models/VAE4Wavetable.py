@@ -7,9 +7,10 @@ from .components import Submodule
 
 class LitAutoEncoder(pl.LightningModule):
     
-    def __init__(self, sample_points: int =600, hidden_dim: int=128, embed_dim: int=32, beta: float=1, duplicate_num: int=6): #Define computations here
+    def __init__(self, sample_points: int=600, beta: float=1, duplicate_num: int=6): #Define computations here
         super().__init__()
         assert sample_points == 600
+        assert duplicate_num == 6
 
         self.sample_points = sample_points
         self.duplicate_num = duplicate_num 
@@ -25,29 +26,26 @@ class LitAutoEncoder(pl.LightningModule):
             nn.Conv1d(in_channels=256, out_channels=512, kernel_size=9, stride=2, padding=0), nn.LeakyReLU(),
         )
 
+        self.decoder = nn.Sequential(
+            Submodule.UpSampling(in_channels=128+9, out_channels=64, kernel_size=8, stride=2),
+            Submodule.ResBlock(64,3),
+            Submodule.UpSampling(in_channels=64, out_channels=32, kernel_size=8, stride=1),
+            Submodule.ResBlock(32,3),
+            Submodule.UpSampling(in_channels=32, out_channels=16, kernel_size=8, stride=2),
+            Submodule.ResBlock(16,3),
+            Submodule.UpSampling(in_channels=16, out_channels=8, kernel_size=9, stride=1),
+            Submodule.ResBlock(8,3),
+            Submodule.ConvOut(in_channels=8, out_channels=1, kernel_size=1, stride=1),
+        )
+
         #self.hidden2mu = nn.Linear(embed_dim,embed_dim)
-        self.hidden2mu = nn.Conv1d(in_channels=512, out_channels=128, kernel_size=1, stride=1, padding=0)
         #self.hidden2log_var = nn.Linear(embed_dim,embed_dim)
+        self.hidden2mu = nn.Conv1d(in_channels=512, out_channels=128, kernel_size=1, stride=1, padding=0)
         self.hidden2log_var = nn.Conv1d(in_channels=512, out_channels=128, kernel_size=1, stride=1, padding=0)
-
-        self.beta = beta
-        self.spec =  torchaudio.transforms.Spectrogram(
-                                                       #sample_rate = sample_rate,
-                                                       n_fft = int(sample_points*(duplicate_num)), #時間幅
-                                                       hop_length = int(sample_points*(duplicate_num)), #移動幅
-                                                       win_length = int(sample_points*(duplicate_num)), #窓幅
-                                                       center=False,
-                                                       pad=0, #no_padding
-                                                       window_fn = torch.hann_window,
-                                                       normalized=True,
-                                                       onesided=True,
-                                                       power=2.0)
         
-        self.ToDB =  torchaudio.transforms.AmplitudeToDB(stype = 'magnitude',top_db = 80)
-        self.loudness = Submodule.Loudness(44100, 600)
-        self.decoder = nn.Sequential(*Submodule.decoder())
-        #self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-
+        self.beta = beta
+        self.loudness = Submodule.Loudness(44100, 3600)
+        self.distance = Submodule.Distance(scales=[3600],overlap=0)
 
     def forward(self, x: torch.Tensor, attrs:dict)->Tuple[torch.Tensor,torch.Tensor,torch.Tensor]: # Use for inference only (separate from training_step)
 
@@ -99,22 +97,14 @@ class LitAutoEncoder(pl.LightningModule):
         loud_x_out = self.loudness(spec_ｘ_out)
         self.loud_dist = (loud_x - loud_x_out).pow(2).mean()
         self.spec_recon_loss = self.distance(spec_x,spec_x_out)
-        
-        #self.wave_recon_loss = torch.nn.functional.mse_loss(x, x_out) #Deep Convolutional Oscilatorで使用.ノイズ多め
-        #self.recon_loss = torch.nn.functional.l1_loss(x, x_out) 
-        #self.recon_loss = torch.nn.functional.l1_loss( torch.log(x + 1e-7) ,torch.log(x_out + 1e-7))#RAVEが参照していたやつ。スペクトル距離、うまくいかない
-        #self.recon_loss = torch.nn.functional.l1_loss(x , x_out) + torch.nn.functional.l1_loss( torch.log(x) , torch.log(x_out) ) #DDSPのロス.良い
-        #self.recon_loss = torch.norm(x - x_out) / torch.norm(x) + abs(torch.log(x + 1e-7) - torch.log(x_out + 1e-7)).mean() #RAVEで使用しているロス関数.結構いい
 
         kl_loss = (-0.5*(1+log_var - mu**2 - 
                          torch.exp(log_var)).sum(dim=1)) #sumは潜在変数次元分を合計させている?
         self.kl_loss = kl_loss.mean() 
         
         self.loss = self.spec_recon_loss + self.loud_dist + self.beta * self.kl_loss        
-        #self.loss = self.wave_recon_loss + self.spec_recon_loss + self.loud_dist + self.beta * self.kl_loss #Condがうまくいかなくなった
 
         self.log(f"{stage}_kl_loss", self.kl_loss, on_step = True, on_epoch = True)
-        #self.log(f"{stage}_wave_recon_loss", self.wave_recon_loss, on_step = True, on_epoch = True)
         self.log(f"{stage}_spec_recon_loss", self.spec_recon_loss, on_step = True, on_epoch = True)
         self.log(f"{stage}_loss", self.loss,on_step = True, on_epoch = True, prog_bar=True)
         return self.loss
@@ -215,58 +205,13 @@ class LitAutoEncoder(pl.LightningModule):
     def configure_optimizers(self): #Optimizerと学習率(lr)設定
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
         return optimizer
-    
-    def lin_distance(self, x:torch.Tensor, y:torch.Tensor) -> torch.Tensor:
-        return torch.norm(x - y) / torch.norm(x)
 
-    def log_distance(self, x:torch.Tensor, y:torch.Tensor) -> torch.Tensor:
-        return abs(torch.log(x + 1e-7) - torch.log(y + 1e-7)).mean()
-
-    def distance(self, x:torch.Tensor, y:torch.Tensor) -> torch.Tensor:
-        scales = [3600]
-        x = self.multiscale_stft(x, scales, 0)
-        y = self.multiscale_stft(y, scales, 0)
-
-        lin = sum(list(map(self.lin_distance, x, y)))
-        log = sum(list(map(self.log_distance, x, y)))
-
-        return lin + log
-
-    def multiscale_stft(self, signal:torch.Tensor, scales:list, overlap:float)-> torch.Tensor:
-        """
-        Compute a stft on several scales, with a constant overlap value.
-        Parameters
-        ----------
-        signal: torch.Tensor
-            input signal to process ( B X C X T )
-        
-        scales: list
-            scales to use
-        overlap: float
-            overlap between windows ( 0 - 1 )
-        """
-        #signal = rearrange(signal, "b c t -> (b c) t")
-        stfts = []
-        for s in scales:
-            S = torch.stft(
-                signal,
-                s,
-                int(s * (1 - overlap)),
-                s,
-                torch.hann_window(s).to(signal),
-                True,
-                normalized=True,
-                return_complex=True,
-            ).abs()
-            stfts.append(S)
-        return stfts
-
-    def _logging_graph(self, batch, batch_idx):
+    def _logging_graph(self, batch, batch_idx): # not used
         x,attrs = self._prepare_batch(batch)
         tensorboard = self.logger.experiment
         tensorboard.add_graph(self, x) #graph表示
         
-    def _logging_hparams(self):
+    def _logging_hparams(self): # not used
 
         tensorboard = self.logger.experiment
         tensorboard.add_hparams({'N_FFT': N_FFT, 'HOP_LENGTH': HOP_LENGTH,'MELSTFT_FLG':MELSTFT_FLG, 

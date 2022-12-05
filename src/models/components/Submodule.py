@@ -32,62 +32,91 @@ class Loudness(nn.Module):
 
 # Define block
 class ResBlock(nn.Module):
-    def __init__(self, channel):
+    def __init__(self, channel, layer_num=1):
         super(ResBlock, self).__init__()
+        self.resBlocks = nn.ModuleList()
         self.resBlock = nn.Sequential(
             nn.LeakyReLU(.2),
             nn.Conv1d(in_channels=channel , out_channels=channel, kernel_size=1, stride=1, padding=0)
             )
+        for i in range(layer_num):
+            self.resBlocks.append(self.resBlock)
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
-        #print(x.shape)
-        residual = x
-        x = self.resBlock(x)
-        out = x + residual
-        return out
 
-# Define decoder
-def decoder():
-    upSampling1 = nn.Sequential(
-        nn.LeakyReLU(.2),
-        nn.ConvTranspose1d(in_channels=128+9, out_channels=64, kernel_size=8, stride=2, padding=0),
-    )
-    res_block1 = nn.Sequential(
-        ResBlock(64),ResBlock(64),ResBlock(64),
-    )
+        for module in self.resBlocks:
+            x = x + module(x)
+        return x
 
-    upSampling2 = nn.Sequential(
-        nn.LeakyReLU(.2),
-        nn.ConvTranspose1d(in_channels=64, out_channels=32, kernel_size=8, stride=1, padding=0),
-    )
-    res_block2 = nn.Sequential(
-        ResBlock(32),ResBlock(32),ResBlock(32),
-    )
+class UpSampling(nn.Module):
+    def __init__(self, in_channels:str, out_channels:str, kernel_size:str, stride:str, padding:str=0):
+        super(UpSampling, self).__init__()
+        self.upSampling = nn.Sequential(
+            nn.LeakyReLU(.2),
+            nn.ConvTranspose1d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding),
+        )
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        x = self.upSampling(x)
+        return x
 
-    upSampling3 = nn.Sequential(
-        nn.LeakyReLU(.2),
-        nn.ConvTranspose1d(in_channels=32, out_channels=16, kernel_size=8, stride=2, padding=0),
-    )
-    res_block3 = nn.Sequential(
-        ResBlock(16),ResBlock(16),ResBlock(16),
-    )
+class ConvOut(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding=0):
+        super(ConvOut, self).__init__()
+        self.conv_out = nn.Sequential(
+            nn.Conv1d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding),
+            nn.Tanh(),
+        )
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        x = self.conv_out(x)
+        return x
 
-    upSampling4 = nn.Sequential(
-        nn.LeakyReLU(.2),
-        nn.ConvTranspose1d(in_channels=16, out_channels=8, kernel_size=9, stride=1, padding=0),
-    )
-    res_block4 = nn.Sequential(
-        ResBlock(8),ResBlock(8),ResBlock(8),
-    )
+class Distance(nn.Module):
+    def __init__(self,scales:list = [3600],overlap:float=0):
+        super(Distance, self).__init__()
+        self.scales = scales
+        self.overlap = overlap
 
-    conv_out = nn.Sequential(
-        nn.Conv1d(in_channels=8 , out_channels=1, kernel_size=1, stride=1, padding=0),
-        nn.Tanh(),
-    )
+    def forward(self,x:torch.Tensor, y:torch.Tensor) -> torch.Tensor:
 
-    decoder = nn.ModuleList()
-    decoder.extend([upSampling1, res_block1, upSampling2, res_block2, upSampling3, res_block3, upSampling4, res_block4, conv_out])
-    return decoder
+        x = self._multiscale_stft(x, self.scales, self.overlap)
+        y = self._multiscale_stft(y, self.scales, self.overlap)
 
-if __name__ == '__main__':
-    print(decoder())
+        lin = sum(list(map(self._lin_distance, x, y)))
+        log = sum(list(map(self._log_distance, x, y)))
+
+        return lin + log
+
+    def _lin_distance(self,x:torch.Tensor, y:torch.Tensor) -> torch.Tensor:
+        return torch.norm(x - y) / torch.norm(x)
+
+    def _log_distance(self,x:torch.Tensor, y:torch.Tensor) -> torch.Tensor:
+        return abs(torch.log(x + 1e-7) - torch.log(y + 1e-7)).mean()
+
+    def _multiscale_stft(self,signal:torch.Tensor, scales:list, overlap:float)-> torch.Tensor:
+        """
+        Compute a stft on several scales, with a constant overlap value.
+        Parameters
+        ----------
+        signal: torch.Tensor
+            input signal to process ( B X C X T )
+        
+        scales: list
+            scales to use
+        overlap: float
+            overlap between windows ( 0 - 1 )
+        """
+        #signal = rearrange(signal, "b c t -> (b c) t")
+        stfts = []
+        for s in scales:
+            S = torch.stft(
+                signal,
+                s,
+                int(s * (1 - overlap)),
+                s,
+                torch.hann_window(s).to(signal),
+                True,
+                normalized=True,
+                return_complex=True,
+            ).abs()
+            stfts.append(S)
+        return stfts

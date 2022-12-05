@@ -13,7 +13,6 @@ class MyPrintingCallback(pl.callbacks.Callback):
 
     def on_train_end(self, trainer: pl.Trainer, model: pl.LightningModule) -> None:
         #model._logging_hparams()
-        #x = torch.randn(32, 600, 1)
         #tensorboard = model.logger.experiment
         #tensorboard.add_graph(model, x) #graph表示
         end = time.perf_counter()
