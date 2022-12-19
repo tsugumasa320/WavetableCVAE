@@ -92,5 +92,5 @@ if __name__ == "__main__":
     )
     trainerWT.train(resume=False)
     trainerWT.save_model(comment="-ess-yeojohnson-beta1-conditionCh1-EncDec")
-    trainerWT.test()
+    #trainerWT.test()
     print("Done!")

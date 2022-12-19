@@ -65,6 +65,7 @@ class LitAutoEncoder(pl.LightningModule):
         self.oddToEvenHarmonicEnergyRatioZ = []
         self.pitchSalienceZ = []
         self.HnrZ = []
+        self._latentdimAttributesCalc()
 
     def forward(self, x: torch.Tensor, attrs:dict, latent_op:dict=None)->Tuple[torch.Tensor,torch.Tensor,torch.Tensor]: # Use for inference only (separate from training_step)
 
@@ -74,16 +75,31 @@ class LitAutoEncoder(pl.LightningModule):
         if latent_op is not None:
             hidden = self._latentdimControler(hidden, latent_op)        
         hidden = self._conditioning(hidden,attrs,size=1)
-        output = self.decode(hidden)# * torch.tensor(np.hanning(600)).to(device)
+        output = self.decode(hidden) # torch.tensor(np.hanning(600)).to(device)
         return mu, log_var, output
 
     def _latentdimAttributesCalc(self):
 
         dataset = Dataset.AKWDDataset(root= data_dir / "AKWF_44k1_600s")
         
+        CentroidTmp = torch.zeros(1,128,140)
+        CentroidSum = torch.zeros(1,128,140)
+        SpreadTmp = torch.zeros(1,128,140)
+        SpreadSum = torch.zeros(1,128,140)
+        KurtosisTmp = torch.zeros(1,128,140)
+        KurtosisSum = torch.zeros(1,128,140)
+        ZeroCrossingRateTmp = torch.zeros(1,128,140)
+        ZeroCrossingRateSum = torch.zeros(1,128,140)
+        oddToEvenHarmonicEnergyRatioTmp = torch.zeros(1,128,140)
+        oddToEvenHarmonicEnergyRatioSum = torch.zeros(1,128,140)
+        pitchSalienceTmp = torch.zeros(1,128,140)
+        pitchSalienceSum = torch.zeros(1,128,140)
+        HnrTmp = torch.zeros(1,128,140)
+        HnrSum = torch.zeros(1,128,140)
+
         for i in range(len(dataset)):
             x, attrs = dataset[i]
-            mu, log_var = self.encode(x)
+            mu, log_var = self.encode(x.unsqueeze(0))
             hidden = self._reparametrize(mu, log_var)
 
             CentroidTmp += hidden * attrs["SpectralCentroid"]
@@ -98,14 +114,14 @@ class LitAutoEncoder(pl.LightningModule):
             ZeroCrossingRateTmp += hidden * attrs["ZeroCrossingRate"]
             ZeroCrossingRateSum += attrs["ZeroCrossingRate"]
 
-            oddToEvenHarmonicEnergyRatioTmp += hidden * attrs["oddToEvenHarmonicEnergyRatio"]
-            oddToEvenHarmonicEnergyRatioSum += attrs["oddToEvenHarmonicEnergyRatio"]
+            oddToEvenHarmonicEnergyRatioTmp += hidden * attrs["OddToEvenHarmonicEnergyRatio"]
+            oddToEvenHarmonicEnergyRatioSum += attrs["OddToEvenHarmonicEnergyRatio"]
 
-            pitchSalienceTmp += hidden * attrs["pitchSalience"]
-            pitchSalienceSum += attrs["pitchSalience"]
+            pitchSalienceTmp += hidden * attrs["PitchSalience"]
+            pitchSalienceSum += attrs["PitchSalience"]
 
-            HnrTmp += hidden * attrs["Hnr"]
-            HnrSum += attrs["Hnr"]
+            HnrTmp += hidden * attrs["HNR"]
+            HnrSum += attrs["HNR"]
         
         self.spectroCentroidZ = CentroidTmp / CentroidSum
         self.spectroSpreadZ = SpreadTmp / SpreadSum
@@ -115,7 +131,7 @@ class LitAutoEncoder(pl.LightningModule):
         self.pitchSalienceZ = pitchSalienceTmp / pitchSalienceSum
         self.HnrZ = HnrTmp / HnrSum
 
-    def _latentdimControler(self, hidden, latent_op)        
+    def _latentdimControler(self, hidden, latent_op):        
         if latent_op['randomize'] != None:
             # excepcted value is 0.0 ~ 1.0
             hidden = (hidden * (1-latent_op['randomize'])) + (torch.randn_like(hidden) * latent_op['randomize'])
@@ -123,22 +139,22 @@ class LitAutoEncoder(pl.LightningModule):
         if latent_op['SpectralCentroid'] != None:
             hidden = (hidden * (1-latent_op['SpectralCentroid'])) + (self.spectroCentroidZ * latent_op['SpectralCentroid'])
         
-        if latent_op['SpectralSpread'] == 'SpectralSpread':
+        if latent_op['SpectralSpread'] != None:
             hidden = (hidden * (1-latent_op['SpectralSpread'])) + (self.spectroSpreadZ * latent_op['SpectralSpread'])
         
-        if latent_op['SpectralKurtosis'] == 'SpectralKurtosis':
+        if latent_op['SpectralKurtosis'] != None:
             hidden = (hidden * (1-latent_op['SpectralKurtosis'])) + (self.spectroKurtosisZ * latent_op['SpectralKurtosis'])
 
-        if latent_op['ZeroCrossingRate'] == 'ZeroCrossingRate':
+        if latent_op['ZeroCrossingRate'] != None:
             hidden = (hidden * (1-latent_op['ZeroCrossingRate'])) + (self.zeroCrossingRateZ * latent_op['ZeroCrossingRate'])
 
-        if latent_op['OddToEvenHarmonicEnergyRatio'] == 'OddToEvenHarmonicEnergyRatio':
+        if latent_op['OddToEvenHarmonicEnergyRatio'] != None:
             hidden = (hidden * (1-latent_op['OddToEvenHarmonicEnergyRatio'])) + (self.oddToEvenHarmonicEnergyRatioZ * latent_op['OddToEvenHarmonicEnergyRatio'])
 
-        if latent_op['type'] == 'PitchSalience':
+        if latent_op['PitchSalience'] != None:
             hidden = (hidden * (1-latent_op['PitchSalience'])) + (self.pitchSalienceZ * latent_op['PitchSalience'])
 
-        if latent_op['type'] == 'HNR':
+        if latent_op['HNR'] != None:
             hidden = (hidden * (1-latent_op['HNR'])) + (self.HnrZ * latent_op['HNR'])
 
         return hidden
