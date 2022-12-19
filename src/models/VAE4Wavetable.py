@@ -4,6 +4,17 @@ import torch.nn as nn
 import torchaudio
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from .components import Submodule
+from src.dataio import Dataset
+
+import pyrootutils
+
+root = pyrootutils.setup_root(
+    search_from=__file__,
+    indicator=["README.md","LICENSE",".git"],
+    pythonpath=True,
+    #dotenv=True,
+)
+data_dir = root / "data"
 
 class LitAutoEncoder(pl.LightningModule):
     
@@ -17,7 +28,7 @@ class LitAutoEncoder(pl.LightningModule):
         #self.logging_graph_flg = True
 
         self.encoder = nn.Sequential(
-            nn.Conv1d(in_channels=1+9, out_channels=64, kernel_size=9, stride=1, padding=0), nn.LeakyReLU(),
+            nn.Conv1d(in_channels=1, out_channels=64, kernel_size=9, stride=1, padding=0), nn.LeakyReLU(),
             nn.BatchNorm1d(64),
             nn.Conv1d(in_channels=64, out_channels=128, kernel_size=9, stride=1, padding=0), nn.LeakyReLU(),
             nn.BatchNorm1d(128),
@@ -47,14 +58,90 @@ class LitAutoEncoder(pl.LightningModule):
         self.loudness = Submodule.Loudness(44100, 3600)
         self.distance = Submodule.Distance(scales=[3600],overlap=0)
 
-    def forward(self, x: torch.Tensor, attrs:dict)->Tuple[torch.Tensor,torch.Tensor,torch.Tensor]: # Use for inference only (separate from training_step)
+        self.spectroCentroidZ = []
+        self.spectroSpreadZ = []
+        self.spectroKurtosisZ = []
+        self.zeroCrossingRateZ = []
+        self.oddToEvenHarmonicEnergyRatioZ = []
+        self.pitchSalienceZ = []
+        self.HnrZ = []
 
-        x = self._conditioning(x, attrs,size=1)
+    def forward(self, x: torch.Tensor, attrs:dict, latent_op:dict=None)->Tuple[torch.Tensor,torch.Tensor,torch.Tensor]: # Use for inference only (separate from training_step)
+
+        #x = self._conditioning(x, attrs,size=1)
         mu, log_var = self.encode(x)
-        hidden = self.reparametrize(mu, log_var)
+        hidden = self._reparametrize(mu, log_var)
+        if latent_op is not None:
+            hidden = self._latentdimControler(hidden, latent_op)        
         hidden = self._conditioning(hidden,attrs,size=1)
         output = self.decode(hidden)# * torch.tensor(np.hanning(600)).to(device)
         return mu, log_var, output
+
+    def _latentdimAttributesCalc(self):
+
+        dataset = Dataset.AKWDDataset(root= data_dir / "AKWF_44k1_600s")
+        
+        for i in range(len(dataset)):
+            x, attrs = dataset[i]
+            mu, log_var = self.encode(x)
+            hidden = self._reparametrize(mu, log_var)
+
+            CentroidTmp += hidden * attrs["SpectralCentroid"]
+            CentroidSum += attrs["SpectralCentroid"]
+
+            SpreadTmp += hidden * attrs["SpectralSpread"]
+            SpreadSum += attrs["SpectralSpread"]
+
+            KurtosisTmp += hidden * attrs["SpectralKurtosis"]
+            KurtosisSum += attrs["SpectralKurtosis"]
+
+            ZeroCrossingRateTmp += hidden * attrs["ZeroCrossingRate"]
+            ZeroCrossingRateSum += attrs["ZeroCrossingRate"]
+
+            oddToEvenHarmonicEnergyRatioTmp += hidden * attrs["oddToEvenHarmonicEnergyRatio"]
+            oddToEvenHarmonicEnergyRatioSum += attrs["oddToEvenHarmonicEnergyRatio"]
+
+            pitchSalienceTmp += hidden * attrs["pitchSalience"]
+            pitchSalienceSum += attrs["pitchSalience"]
+
+            HnrTmp += hidden * attrs["Hnr"]
+            HnrSum += attrs["Hnr"]
+        
+        self.spectroCentroidZ = CentroidTmp / CentroidSum
+        self.spectroSpreadZ = SpreadTmp / SpreadSum
+        self.spectroKurtosisZ = KurtosisTmp / KurtosisSum
+        self.zeroCrossingRateZ = ZeroCrossingRateTmp / ZeroCrossingRateSum
+        self.oddToEvenHarmonicEnergyRatioZ = oddToEvenHarmonicEnergyRatioTmp / oddToEvenHarmonicEnergyRatioSum
+        self.pitchSalienceZ = pitchSalienceTmp / pitchSalienceSum
+        self.HnrZ = HnrTmp / HnrSum
+
+    def _latentdimControler(self, hidden, latent_op)        
+        if latent_op['randomize'] != None:
+            # excepcted value is 0.0 ~ 1.0
+            hidden = (hidden * (1-latent_op['randomize'])) + (torch.randn_like(hidden) * latent_op['randomize'])
+        
+        if latent_op['SpectralCentroid'] != None:
+            hidden = (hidden * (1-latent_op['SpectralCentroid'])) + (self.spectroCentroidZ * latent_op['SpectralCentroid'])
+        
+        if latent_op['SpectralSpread'] == 'SpectralSpread':
+            hidden = (hidden * (1-latent_op['SpectralSpread'])) + (self.spectroSpreadZ * latent_op['SpectralSpread'])
+        
+        if latent_op['SpectralKurtosis'] == 'SpectralKurtosis':
+            hidden = (hidden * (1-latent_op['SpectralKurtosis'])) + (self.spectroKurtosisZ * latent_op['SpectralKurtosis'])
+
+        if latent_op['ZeroCrossingRate'] == 'ZeroCrossingRate':
+            hidden = (hidden * (1-latent_op['ZeroCrossingRate'])) + (self.zeroCrossingRateZ * latent_op['ZeroCrossingRate'])
+
+        if latent_op['OddToEvenHarmonicEnergyRatio'] == 'OddToEvenHarmonicEnergyRatio':
+            hidden = (hidden * (1-latent_op['OddToEvenHarmonicEnergyRatio'])) + (self.oddToEvenHarmonicEnergyRatioZ * latent_op['OddToEvenHarmonicEnergyRatio'])
+
+        if latent_op['type'] == 'PitchSalience':
+            hidden = (hidden * (1-latent_op['PitchSalience'])) + (self.pitchSalienceZ * latent_op['PitchSalience'])
+
+        if latent_op['type'] == 'HNR':
+            hidden = (hidden * (1-latent_op['HNR'])) + (self.HnrZ * latent_op['HNR'])
+
+        return hidden
 
     def encode(self, x:torch.Tensor)->Tuple[torch.Tensor,torch.Tensor]:
         hidden = self.encoder(x)
@@ -62,12 +149,12 @@ class LitAutoEncoder(pl.LightningModule):
         log_var = self.hidden2log_var(hidden)
         return mu, log_var
 
-    def reparametrize(self,mu: torch.Tensor,log_var :torch.Tensor) -> torch.Tensor:
+    def _reparametrize(self,mu: torch.Tensor,log_var :torch.Tensor) -> torch.Tensor:
         #Reparametrization Trick to allow gradients to backpropagate from the 
         #stochastic part of the model
         sigma = torch.exp(0.5*log_var)
-        z = torch.randn_like(sigma)
-        return mu + sigma * z
+        eps = torch.randn_like(sigma)
+        return mu + sigma * eps #z = mu + sigma * epsilon
 
     def decode(self, x:torch.Tensor) -> torch.Tensor:
         x = self.decoder(x)
