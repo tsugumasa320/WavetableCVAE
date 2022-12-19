@@ -84,7 +84,7 @@ class TrainerWT(pl.LightningModule):
 if __name__ == "__main__":
     trainerWT = TrainerWT(
         model=LitAutoEncoder(sample_points=600,beta=1),
-        epoch=1,
+        epoch=5000,
         batch_size=32,
         data_dir=data_dir,
         seed=42,
