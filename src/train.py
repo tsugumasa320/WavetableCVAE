@@ -72,7 +72,7 @@ class TrainerWT(pl.LightningModule):
 
     def save_model(self,comment=""):
         save_path = root / "torchscript"
-        model_save(self.model, save_path, comment=str(self.epoch) + "epoch" + comment)
+        model_save(self.model, self.trainer, save_path, comment=str(self.epoch) + "epoch" + comment)
         print(save_path)
 
     def test(self):
@@ -84,13 +84,13 @@ class TrainerWT(pl.LightningModule):
 if __name__ == "__main__":
     trainerWT = TrainerWT(
         model=LitAutoEncoder(sample_points=600,beta=1),
-        epoch=7500,
+        epoch=1,
         batch_size=32,
         data_dir=data_dir,
         seed=42,
         device = "cuda" if torch.cuda.is_available() else "cpu"
     )
-    trainerWT.train(resume=True)
+    trainerWT.train(resume=False)
     trainerWT.save_model(comment="-ess-yeojohnson-beta1-conditionCh1-Dec")
     #trainerWT.test()
     print("Done!")
