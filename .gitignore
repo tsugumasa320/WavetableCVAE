@@ -40,7 +40,6 @@ __pycache__/
 ml-runs/
 mlruns/
 *.zip
-*.ckpt
 test-reports/
 wandb
 .forked/
