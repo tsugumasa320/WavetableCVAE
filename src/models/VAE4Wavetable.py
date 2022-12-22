@@ -150,7 +150,7 @@ class LitAutoEncoder(pl.LightningModule):
         if latent_op['SpectralCentroid'] != None:
 
             ratio = latent_op['SpectralCentroid'].to(device)
-            hidden = (hidden * (1-ratio)) + (self.spectroCentroidZ * rario)
+            hidden = (hidden * (1-ratio)) + (self.spectroCentroidZ * ratio)
         
         if latent_op['SpectralSpread'] != None:
             ratio = latent_op['SpectralSpread'].to(device)
