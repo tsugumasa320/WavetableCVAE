@@ -23,8 +23,9 @@ import matplotlib.pyplot as plt
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Visualize():
-    def __init__(self, ckpt_path):
+    def __init__(self, ckpt_path:str):
         read_path = root / "torchscript"/ Path(ckpt_path)
+        self.dataset = Dataset.AKWDDataset(root=data_dir)
         self.dm = DataModule.AWKDDataModule(batch_size=32, data_dir= data_dir) 
         self.model = self._read_model(read_path)
 
@@ -33,7 +34,7 @@ class Visualize():
         readCkptModel = model.load_from_checkpoint(checkpoint_path=path)
         return readCkptModel
 
-    def model_eval(self,wav,attrs,latent_op)-> torch.Tensor:
+    def model_eval(self,wav:torch.tensor,attrs:dict,latent_op:dict)-> torch.Tensor:
         with torch.no_grad():
             self.model.eval()
             self.model.to(device)
@@ -68,7 +69,7 @@ class Visualize():
         #print("test",spec_x.shape)
         return spec_x
 
-    def _specToDB(self,waveform):
+    def _specToDB(self,waveform:torch.Tensor):
         sample_points = len(waveform)
         spec =  torchaudio.transforms.Spectrogram(
                                                         #sample_rate = sample_rate,
@@ -90,7 +91,7 @@ class Visualize():
 
         return spec_x
 
-    def plot_gridspectrum(self,eval:bool=False,nrows:int=4, ncols:int=5,latent_op=None):
+    def plot_gridspectrum(self,eval:bool=False,nrows:int=4, ncols:int=5,latent_op=None,save:bool=False):
         
         # 訓練データの波形を見る
         fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(nrows*ncols,nrows*ncols/2),tight_layout=True)
@@ -117,8 +118,10 @@ class Visualize():
             axs[i//ncols, i%ncols].plot(x.squeeze(0))
             
         plt.show()
+        if save == True:
+            fig.savefig("grid_spectrum.png")
 
-    def plot_gridwaveform(self,eval:bool=False,nrows:int=4, ncols:int=5,latent_op=None):
+    def plot_gridwaveform(self,eval:bool=False,nrows:int=4, ncols:int=5,latent_op=None,save:bool=False):
 
         # 訓練データの波形を見る
         fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(nrows*ncols,nrows*ncols/2),tight_layout=True)
@@ -134,16 +137,33 @@ class Visualize():
             x, attrs = data
 
             if eval == True:
-                _, _, x = self.model_eval(x.unsqueeze(0),attrs,latent_op)
-                x = x.squeeze(0).to(device)
+                x = self._eval_waveform(x,attrs,latent_op)
             elif eval == False:
                 pass
+            
             axs[i//ncols, i%ncols].set_title(attrs['name'])
             axs[i//ncols, i%ncols].set_xlabel("time[s]")
             axs[i//ncols, i%ncols].set_ylabel("Amp")
             axs[i//ncols, i%ncols].plot(x.squeeze(0))
             
         plt.show()
+        if save == True:
+            plt.savefig(f"gridwaveform.png")
+
+    def plot_waveform(self,idx:int=0,latent_op=None,save:bool=False):
+
+        x,attrs = self.dataset[idx]
+        x = self._eval_waveform(x,attrs,latent_op)
+        plt.plot(x.squeeze(0))
+        plt.show()
+
+        if save == True:
+            plt.savefig(f"waveform_{idx}.png")
+
+    def _eval_waveform(self,x:torch.tensor,attrs:dict,latent_op=None)-> torch.tensor:
+        _, _, x = self.model_eval(x.unsqueeze(0),attrs,latent_op)
+        x = x.squeeze(0).to(device)
+        return x
 
 if __name__ == "__main__":
     
@@ -162,5 +182,6 @@ if __name__ == "__main__":
         '2022-12-21-13:35:50.554203-LitAutoEncoder-4000epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt')
     #visualize.z2wav()
     #visualize.plot_gridspectrum(eval=True,latent_op=latent_op)
-    visualize.plot_gridwaveform(eval=True,latent_op=latent_op)
+    #visualize.plot_gridwaveform(eval=True,latent_op=latent_op)
+    visualize.plot_waveform(idx=0,latent_op=latent_op)
     print("done")
