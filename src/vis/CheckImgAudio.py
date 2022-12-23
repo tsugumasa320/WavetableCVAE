@@ -107,14 +107,40 @@ class Visualize():
 
             if eval == True:
                 _, _, x = self.model_eval(x.unsqueeze(0),attrs,latent_op)
-                x = self._scw_combain_spec(x,6)
-
             elif eval == False:
-                x = self._scw_combain_spec(x.unsqueeze(0),6)
-
-            axs[i//ncols, i%ncols].set_title("Original : " + attrs['name'])
+                x = x.unsqueeze(0)
+            
+            x = self._scw_combain_spec(x,6)
+            axs[i//ncols, i%ncols].set_title(attrs['name'])
             axs[i//ncols, i%ncols].set_xlabel("Freq_bin")
             axs[i//ncols, i%ncols].set_ylabel("power[dB]")
+            axs[i//ncols, i%ncols].plot(x.squeeze(0))
+            
+        plt.show()
+
+    def plot_gridwaveform(self,eval:bool=False,nrows:int=4, ncols:int=5,latent_op=None):
+
+        # 訓練データの波形を見る
+        fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(nrows*ncols,nrows*ncols/2),tight_layout=True)
+        fig.patch.set_facecolor("white")
+
+        if eval == True:
+            plt.suptitle('Waveform of generated data')
+        elif eval == False:
+            plt.suptitle('Waveform of training data')
+
+        for i, data in enumerate(self.dm.train_dataset):
+            if i >= nrows*ncols: break
+            x, attrs = data
+
+            if eval == True:
+                _, _, x = self.model_eval(x.unsqueeze(0),attrs,latent_op)
+                x = x.squeeze(0).to(device)
+            elif eval == False:
+                pass
+            axs[i//ncols, i%ncols].set_title(attrs['name'])
+            axs[i//ncols, i%ncols].set_xlabel("time[s]")
+            axs[i//ncols, i%ncols].set_ylabel("Amp")
             axs[i//ncols, i%ncols].plot(x.squeeze(0))
             
         plt.show()
@@ -135,5 +161,6 @@ if __name__ == "__main__":
     visualize = Visualize(
         '2022-12-21-13:35:50.554203-LitAutoEncoder-4000epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt')
     #visualize.z2wav()
-    visualize.plot_gridspectrum(eval=True,latent_op=latent_op)
-    print("model loaded")
+    #visualize.plot_gridspectrum(eval=True,latent_op=latent_op)
+    visualize.plot_gridwaveform(eval=True,latent_op=latent_op)
+    print("done")
