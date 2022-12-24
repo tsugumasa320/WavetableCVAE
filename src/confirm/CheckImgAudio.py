@@ -8,6 +8,8 @@ root = pyrootutils.setup_root(
     cwd=True, # change current working directory to the root directory (helps with filepaths)
 )
 data_dir = root / "data/AKWF_44k1_600s"
+output_dir = root / "output"
+
 
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -22,7 +24,7 @@ import torchaudio
 import matplotlib.pyplot as plt
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-class Visualize():
+class EvalModelInit():
     def __init__(self, ckpt_path:str):
         read_path = root / "torchscript"/ Path(ckpt_path)
         self.dataset = Dataset.AKWDDataset(root=data_dir)
@@ -42,14 +44,49 @@ class Visualize():
             self.model.train()
         return wavetable
 
-    def z2wav(self, z:torch.Tensor=torch.randn(1,137,140))-> torch.Tensor:
+    def read_waveform(
+        self,idx:int=0,
+        latent_op=None,
+        eval:bool=False,
+        show:bool=True,
+        save:bool=False,
+        title:str="",
+        ):
+
+        x,attrs = self.dataset[idx]
+
+        if eval == True:
+            x = self._eval_waveform(x,attrs,latent_op)
+
+        if show == True:
+            plt.plot(x.squeeze(0))
+            plt.suptitle(title + attrs["name"])
+            plt.show()
+
+        if save == True:
+            plt.savefig(output_dir / f"waveform_{idx}.jpeg")
+            #TODO Debug
+        return x,attrs
+
+    def _eval_waveform(self,x:torch.tensor,attrs:dict,latent_op=None)-> torch.tensor:
+        _, _, x = self.model_eval(x.unsqueeze(0),attrs,latent_op)
+        x = x.squeeze(0).to(device)
+        return x
+
+class Visualize(EvalModelInit):
+    def __init__(self, ckpt_path:str):
+        super().__init__(ckpt_path)
+
+    def z2wav(self, z:torch.Tensor=torch.randn(1,137,140),show:bool=False)-> torch.Tensor:
         with torch.no_grad():
             self.model.eval()
             self.model.to(device)
             wav = self.model.decode(z.to(device))
             self.model.train()
             plt.plot(wav[0][0].cpu().detach().numpy())
-            plt.show()
+
+            if show == True:
+                plt.show()
         return wav
 
     def _scw_combain_spec(self,scw,duplicate_num=6):
@@ -91,7 +128,7 @@ class Visualize():
 
         return spec_x
 
-    def plot_gridspectrum(self,eval:bool=False,nrows:int=4, ncols:int=5,latent_op=None,save:bool=False):
+    def plot_gridspectrum(self,eval:bool=False,nrows:int=4, ncols:int=5,latent_op=None,show:bool=False,save:bool=False):
         
         # 訓練データの波形を見る
         fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(nrows*ncols,nrows*ncols/2),tight_layout=True)
@@ -117,11 +154,13 @@ class Visualize():
             axs[i//ncols, i%ncols].set_ylabel("power[dB]")
             axs[i//ncols, i%ncols].plot(x.squeeze(0))
             
-        plt.show()
+        if show == True:
+            plt.show()
         if save == True:
-            fig.savefig("grid_spectrum.png")
+            fig.savefig(output_dir / "grid_spectrum.png")
+            #TODO Debug
 
-    def plot_gridwaveform(self,eval:bool=False,nrows:int=4, ncols:int=5,latent_op=None,save:bool=False):
+    def plot_gridwaveform(self,eval:bool=False,nrows:int=4, ncols:int=5,latent_op=None,show:bool=False,save:bool=False):
 
         # 訓練データの波形を見る
         fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(nrows*ncols,nrows*ncols/2),tight_layout=True)
@@ -145,25 +184,12 @@ class Visualize():
             axs[i//ncols, i%ncols].set_xlabel("time[s]")
             axs[i//ncols, i%ncols].set_ylabel("Amp")
             axs[i//ncols, i%ncols].plot(x.squeeze(0))
-            
-        plt.show()
+        
+        if show == True:
+            plt.show()
         if save == True:
-            plt.savefig(f"gridwaveform.png")
-
-    def plot_waveform(self,idx:int=0,latent_op=None,save:bool=False):
-
-        x,attrs = self.dataset[idx]
-        x = self._eval_waveform(x,attrs,latent_op)
-        plt.plot(x.squeeze(0))
-        plt.show()
-
-        if save == True:
-            plt.savefig(f"waveform_{idx}.png")
-
-    def _eval_waveform(self,x:torch.tensor,attrs:dict,latent_op=None)-> torch.tensor:
-        _, _, x = self.model_eval(x.unsqueeze(0),attrs,latent_op)
-        x = x.squeeze(0).to(device)
-        return x
+            plt.savefig(output_dir / f"gridwaveform.png")
+            #TODO Debug
 
 if __name__ == "__main__":
     
@@ -183,5 +209,5 @@ if __name__ == "__main__":
     #visualize.z2wav()
     #visualize.plot_gridspectrum(eval=True,latent_op=latent_op)
     #visualize.plot_gridwaveform(eval=True,latent_op=latent_op)
-    visualize.plot_waveform(idx=0,latent_op=latent_op)
+    visualize.read_waveform(idx=0,latent_op=None,eval=True,show=True,save=True)
     print("done")
