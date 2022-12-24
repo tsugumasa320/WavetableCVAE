@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 from scipy import stats
 import statistics
 import numpy as np
+from tqdm import tqdm
 
 from src.confirm.CheckImgAudio import EvalModelInit
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -79,10 +80,10 @@ class FeatureExatractorInit(EvalModelInit):
             attrs[label_name] = (1/resolution_num)*i
             cond_label.append(attrs[label_name])
             attrs[label_name] =  attrs[label_name] * bias
-            _, _, x = self.model_eval(wavetable.unsqueeze(0),attrs,self.model)
+            _, _, x = self.model_eval(wav=wavetable.unsqueeze(0),attrs=attrs,latent_op=None)
             #波形を6つ繋げる
             six_cycle_wavetable = self.scw_combain(x.squeeze(0),duplicate_num=6)
-            est_label.append(self.est_label_eval(six_cycle_wavetable,label_name=label_name,dbFlg=False))
+            est_label.append(self.est_label_eval(six_cycle_wavetable,attrs,label_name=label_name,dbFlg=False))
 
         #normalize
         est_label = self.Normalize(est_label,normalize_method=normalize_method,label_name=label_name)
@@ -102,9 +103,9 @@ class FeatureExatractorInit(EvalModelInit):
         plt.legend((p1[0], p2[0]), ("traget label", "estimate label"), loc=2)
 
 
-    def est_label_eval(self,wavetable:torch.Tensor,label_name:str, dbFlg:bool=False):
+    def est_label_eval(self,wavetable:torch.Tensor,attrs:dict,label_name:str, dbFlg:bool=False):
         #essentiaでの処理
-        c,sp,k,z,sc,o,d,ps,h = self.ytn_audio_exatractor(wavetable)
+        c,sp,k,z,sc,o,d,ps,h = self.ytn_audio_exatractor(wavetable,attrs)
 
         if label_name == "SpectralCentroid":
             est_data = c
@@ -270,7 +271,7 @@ class FeatureExatractorInit(EvalModelInit):
         PsMAE = 0
         HnrMAE = 0
 
-        for j in range(dm_num):
+        for j in tqdm(range(dm_num)):
             for i in range(len(attrs_label)+2):
 
                 if i == 0:
@@ -322,8 +323,11 @@ class FeatureExatractorInit(EvalModelInit):
         print("PsMAE :",PsMAE)
         print("HNRMAE :",HnrMAE)
 
+        plt.savefig("Test.png")
         plt.show()
 
 if __name__ == "__main__":
-    featureExatractorInit = FeatureExatractorInit()
+    featureExatractorInit = FeatureExatractorInit(
+        ckpt_path="2022-12-21-13:35:50.554203-LitAutoEncoder-4000epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt"
+        )
     featureExatractorInit.plot_condition_results()

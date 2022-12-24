@@ -139,7 +139,7 @@ class LitAutoEncoder(pl.LightningModule):
         self.pitchSalienceZ = pitchSalienceTmp / pitchSalienceSum
         self.HnrZ = HnrTmp / HnrSum
 
-    def _latentdimControler(self, hidden, latent_op):  
+    def _latentdimControler(self, hidden:torch.tensor, latent_op:dict=None):  
 
         device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')      
         if latent_op['randomize'] != None:

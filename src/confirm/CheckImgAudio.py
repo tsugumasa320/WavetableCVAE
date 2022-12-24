@@ -36,7 +36,7 @@ class EvalModelInit():
         readCkptModel = model.load_from_checkpoint(checkpoint_path=path)
         return readCkptModel
 
-    def model_eval(self,wav:torch.tensor,attrs:dict,latent_op:dict)-> torch.Tensor:
+    def model_eval(self,wav:torch.tensor,attrs:dict,latent_op:dict=None)-> torch.Tensor:
         with torch.no_grad():
             self.model.eval()
             self.model.to(device)
@@ -72,22 +72,6 @@ class EvalModelInit():
         _, _, x = self.model_eval(x.unsqueeze(0),attrs,latent_op)
         x = x.squeeze(0).to(device)
         return x
-
-class Visualize(EvalModelInit):
-    def __init__(self, ckpt_path:str):
-        super().__init__(ckpt_path)
-
-    def z2wav(self, z:torch.Tensor=torch.randn(1,137,140),show:bool=False)-> torch.Tensor:
-        with torch.no_grad():
-            self.model.eval()
-            self.model.to(device)
-            wav = self.model.decode(z.to(device))
-            self.model.train()
-            plt.plot(wav[0][0].cpu().detach().numpy())
-
-            if show == True:
-                plt.show()
-        return wav
 
     def _scw_combain_spec(self,scw,duplicate_num=6):
 
@@ -127,6 +111,22 @@ class Visualize(EvalModelInit):
         spec_x = ToDB(spec_x)
 
         return spec_x
+
+class Visualize(EvalModelInit):
+    def __init__(self, ckpt_path:str):
+        super().__init__(ckpt_path)
+
+    def z2wav(self, z:torch.Tensor=torch.randn(1,137,140),show:bool=False)-> torch.Tensor:
+        with torch.no_grad():
+            self.model.eval()
+            self.model.to(device)
+            wav = self.model.decode(z.to(device))
+            self.model.train()
+            plt.plot(wav[0][0].cpu().detach().numpy())
+
+            if show == True:
+                plt.show()
+        return wav
 
     def plot_gridspectrum(self,eval:bool=False,nrows:int=4, ncols:int=5,latent_op=None,show:bool=False,save:bool=False):
         
