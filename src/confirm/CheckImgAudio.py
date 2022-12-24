@@ -48,8 +48,8 @@ class EvalModelInit():
         self,idx:int=0,
         latent_op=None,
         eval:bool=False,
-        show:bool=True,
         save:bool=False,
+        show:bool=True,
         title:str="",
         ):
 
@@ -58,14 +58,14 @@ class EvalModelInit():
         if eval == True:
             x = self._eval_waveform(x,attrs,latent_op)
 
-        if show == True:
-            plt.plot(x.squeeze(0))
-            plt.suptitle(title + attrs["name"])
-            plt.show()
+        plt.plot(x.squeeze(0))
+        plt.suptitle(title + attrs["name"])
 
         if save == True:
             plt.savefig(output_dir / f"waveform_{idx}.jpeg")
-            #TODO Debug
+        if show == True:
+            plt.show()
+
         return x,attrs
 
     def _eval_waveform(self,x:torch.tensor,attrs:dict,latent_op=None)-> torch.tensor:
@@ -154,11 +154,10 @@ class Visualize(EvalModelInit):
             axs[i//ncols, i%ncols].set_ylabel("power[dB]")
             axs[i//ncols, i%ncols].plot(x.squeeze(0))
             
-        if show == True:
-            plt.show()
         if save == True:
             fig.savefig(output_dir / "grid_spectrum.png")
-            #TODO Debug
+        if show == True:
+            plt.show()
 
     def plot_gridwaveform(self,eval:bool=False,nrows:int=4, ncols:int=5,latent_op=None,show:bool=False,save:bool=False):
 
@@ -185,11 +184,10 @@ class Visualize(EvalModelInit):
             axs[i//ncols, i%ncols].set_ylabel("Amp")
             axs[i//ncols, i%ncols].plot(x.squeeze(0))
         
-        if show == True:
-            plt.show()
         if save == True:
             plt.savefig(output_dir / f"gridwaveform.png")
-            #TODO Debug
+        if show == True:
+            plt.show()
 
 if __name__ == "__main__":
     
@@ -207,7 +205,7 @@ if __name__ == "__main__":
     visualize = Visualize(
         '2022-12-21-13:35:50.554203-LitAutoEncoder-4000epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt')
     #visualize.z2wav()
-    #visualize.plot_gridspectrum(eval=True,latent_op=latent_op)
-    #visualize.plot_gridwaveform(eval=True,latent_op=latent_op)
-    visualize.read_waveform(idx=0,latent_op=None,eval=True,show=True,save=True)
+    visualize.plot_gridspectrum(eval=True,latent_op=latent_op,save=True,show=True)
+    visualize.plot_gridwaveform(eval=True,latent_op=latent_op,save=True,show=True)
+    visualize.read_waveform(idx=0,latent_op=None,eval=True,save=True,show=True)
     print("done")
