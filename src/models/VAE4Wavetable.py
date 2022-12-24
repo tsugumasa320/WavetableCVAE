@@ -140,41 +140,48 @@ class LitAutoEncoder(pl.LightningModule):
         self.HnrZ = HnrTmp / HnrSum
 
     def _latentdimControler(self, hidden:torch.tensor, latent_op:dict=None):  
-
+        #print("_latentdimControler")
         device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')      
         if latent_op['randomize'] != None:
             # excepcted value is 0.0 ~ 1.0
-            ratio = torch.tensor(latent_op['randomize']).to(device)
-            hidden = (hidden + (torch.randn_like(hidden) * ratio)) / (1+ratio)
+            assert latent_op['randomize'] >= 0.0 and latent_op['randomize'] <= 1.0
+            alpha = torch.tensor(latent_op['randomize']).to(device) - 0.5
+            hidden = hidden + (torch.randn_like(hidden) * alpha)
         
         if latent_op['SpectralCentroid'] != None:
-
-            ratio = torch.tensor(latent_op['SpectralCentroid']).to(device)
-            hidden = (hidden + (self.spectroCentroidZ * ratio)) / (1+ratio)
+            assert latent_op['SpectralCentroid'] >= 0.0 and latent_op['SpectralCentroid'] <= 1.0
+            alpha = torch.tensor(latent_op['SpectralCentroid']).to(device) -0.5
+            hidden = hidden + (self.spectroCentroidZ * alpha)
         
         if latent_op['SpectralSpread'] != None:
-            ratio = torch.tensor(latent_op['SpectralSpread']).to(device)
-            hidden = (hidden + (self.spectroSpreadZ * ratio)) / (1+ratio)
+            assert latent_op['SpectralSpread'] >= 0.0 and latent_op['SpectralSpread'] <= 1.0
+            alpha = torch.tensor(latent_op['SpectralSpread']).to(device) -0.5
+            hidden = hidden + (self.spectroSpreadZ * alpha)
         
         if latent_op['SpectralKurtosis'] != None:
-            ratio = torch.tensor(latent_op['SpectralKurtosis']).to(device)
-            hidden = (hidden + (self.spectroKurtosisZ * ratio)) / (1+ratio)
+            assert latent_op['SpectralKurtosis'] >= 0.0 and latent_op['SpectralKurtosis'] <= 1.0
+            alpha = torch.tensor(latent_op['SpectralKurtosis']).to(device) -0.5
+            hidden = hidden + (self.spectroKurtosisZ * alpha)
 
         if latent_op['ZeroCrossingRate'] != None:
-            ratio = torch.tensor(latent_op['ZeroCrossingRate']).to(device)
-            hidden = (hidden  + (self.zeroCrossingRateZ * ratio)) / (1+ratio)
+            assert latent_op['ZeroCrossingRate'] >= 0.0 and latent_op['ZeroCrossingRate'] <= 1.0
+            alpha = torch.tensor(latent_op['ZeroCrossingRate']).to(device) -0.5
+            hidden = hidden  + (self.zeroCrossingRateZ * alpha)
 
         if latent_op['OddToEvenHarmonicEnergyRatio'] != None:
-            ratio = torch.tensor(latent_op['OddToEvenHarmonicEnergyRatio']).to(device)
-            hidden = (hidden + (self.oddToEvenHarmonicEnergyRatioZ * ratio)) / (1+ratio)
+            assert latent_op['OddToEvenHarmonicEnergyRatio'] >= 0.0 and latent_op['OddToEvenHarmonicEnergyRatio'] <= 1.0
+            alpha = torch.tensor(latent_op['OddToEvenHarmonicEnergyRatio']).to(device) -0.5
+            hidden = hidden + (self.oddToEvenHarmonicEnergyRatioZ * alpha)
 
         if latent_op['PitchSalience'] != None:
-            ratio = torch.tensor(latent_op['PitchSalience']).to(device)
-            hidden = (hidden + (self.pitchSalienceZ * ratio)) / (1+ratio)
+            assert latent_op['PitchSalience'] >= 0.0 and latent_op['PitchSalience'] <= 1.0
+            alpha = torch.tensor(latent_op['PitchSalience']).to(device) -0.5
+            hidden = hidden + (self.pitchSalienceZ * alpha)
 
         if latent_op['HNR'] != None:
-            ratio = torch.tensor(latent_op['HNR']).to(device)
-            hidden = (hidden  + (self.HnrZ * ratio)) / (1+ratio)
+            assert latent_op['HNR'] >= 0.0 and latent_op['HNR'] <= 1.0
+            alpha = torch.tensor(latent_op['HNR']).to(device) -0.5
+            hidden = hidden  + (self.HnrZ * alpha)
 
         return hidden
 

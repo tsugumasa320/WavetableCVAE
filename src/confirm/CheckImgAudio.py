@@ -31,18 +31,10 @@ class EvalModelInit():
         self.dm = DataModule.AWKDDataModule(batch_size=32, data_dir= data_dir) 
         self.model = self._read_model(read_path)
 
-    def _read_model(self,path:Path)->VAE4Wavetable.LitAutoEncoder:
+    def _read_model(self,path:Path):
         model = VAE4Wavetable.LitAutoEncoder(sample_points = 600, beta = 0.1)
         readCkptModel = model.load_from_checkpoint(checkpoint_path=path)
         return readCkptModel
-
-    def model_eval(self,wav:torch.tensor,attrs:dict,latent_op:dict=None)-> torch.Tensor:
-        with torch.no_grad():
-            self.model.eval()
-            self.model.to(device)
-            wavetable = self.model(wav.to(device),attrs,latent_op)
-            self.model.train()
-        return wavetable
 
     def read_waveform(
         self,idx:int=0,
@@ -58,7 +50,7 @@ class EvalModelInit():
         if eval == True:
             x = self._eval_waveform(x,attrs,latent_op)
 
-        plt.plot(x.squeeze(0))
+        plt.plot(x.cpu().squeeze(0))
         plt.suptitle(title + attrs["name"])
 
         if save == True:
@@ -69,9 +61,17 @@ class EvalModelInit():
         return x,attrs
 
     def _eval_waveform(self,x:torch.tensor,attrs:dict,latent_op=None)-> torch.tensor:
-        _, _, x = self.model_eval(x.unsqueeze(0),attrs,latent_op)
+        x = self.model_eval(x.unsqueeze(0),attrs,latent_op)
         x = x.squeeze(0).to(device)
         return x
+
+    def model_eval(self,wav:torch.tensor,attrs:dict,latent_op:dict=None)-> torch.Tensor:
+        with torch.no_grad():
+            self.model.eval()
+            self.model.to(device)
+            _mu, _log_var,wavetable = self.model(wav.to(device),attrs,latent_op)
+            self.model.train()
+        return wavetable
 
     def _scw_combain_spec(self,scw,duplicate_num=6):
 
@@ -144,7 +144,7 @@ class Visualize(EvalModelInit):
             x, attrs = data
 
             if eval == True:
-                _, _, x = self.model_eval(x.unsqueeze(0),attrs,latent_op)
+                x = self.model_eval(x.unsqueeze(0),attrs,latent_op)
             elif eval == False:
                 x = x.unsqueeze(0)
             
@@ -182,7 +182,7 @@ class Visualize(EvalModelInit):
             axs[i//ncols, i%ncols].set_title(attrs['name'])
             axs[i//ncols, i%ncols].set_xlabel("time[s]")
             axs[i//ncols, i%ncols].set_ylabel("Amp")
-            axs[i//ncols, i%ncols].plot(x.squeeze(0))
+            axs[i//ncols, i%ncols].plot(x.squeeze(0).cpu())
         
         if save == True:
             plt.savefig(output_dir / f"gridwaveform.png")
@@ -192,20 +192,20 @@ class Visualize(EvalModelInit):
 if __name__ == "__main__":
     
     latent_op = {
-    "randomize": 0.1,
-    "SpectralCentroid": 0.1,
-    "SpectralSpread": 0.1,
-    "SpectralKurtosis": 0.1,
-    "ZeroCrossingRate": 0.1,
-    "OddToEvenHarmonicEnergyRatio": 0.1,
-    "PitchSalience" : 0.1,
-    "HNR" : 0.1,
+    "randomize": 1,
+    "SpectralCentroid": 0,
+    "SpectralSpread": None,
+    "SpectralKurtosis": None,
+    "ZeroCrossingRate": None,
+    "OddToEvenHarmonicEnergyRatio": None,
+    "PitchSalience" : None,
+    "HNR" : None,
     }
 
     visualize = Visualize(
         '2022-12-21-13:35:50.554203-LitAutoEncoder-4000epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt')
     #visualize.z2wav()
-    visualize.plot_gridspectrum(eval=True,latent_op=latent_op,show=True,save=True)
-    visualize.plot_gridwaveform(eval=True,latent_op=latent_op,show=True,save=True)
-    visualize.read_waveform(idx=0,latent_op=None,eval=True,save=True,show=True)
+    #visualize.plot_gridspectrum(eval=True,latent_op=latent_op,show=True,save=True)
+    #visualize.plot_gridwaveform(eval=True,latent_op=latent_op,show=True,save=True)
+    visualize.read_waveform(idx=0,latent_op=latent_op,eval=True,save=True,show=True)
     print("done")
