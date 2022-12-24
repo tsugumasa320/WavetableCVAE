@@ -205,7 +205,7 @@ if __name__ == "__main__":
     visualize = Visualize(
         '2022-12-21-13:35:50.554203-LitAutoEncoder-4000epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt')
     #visualize.z2wav()
-    visualize.plot_gridspectrum(eval=True,latent_op=latent_op,save=True,show=True)
-    visualize.plot_gridwaveform(eval=True,latent_op=latent_op,save=True,show=True)
+    visualize.plot_gridspectrum(eval=True,latent_op=latent_op,show=True,save=True)
+    visualize.plot_gridwaveform(eval=True,latent_op=latent_op,show=True,save=True)
     visualize.read_waveform(idx=0,latent_op=None,eval=True,save=True,show=True)
     print("done")
