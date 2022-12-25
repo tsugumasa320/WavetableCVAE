@@ -146,12 +146,13 @@ class LitAutoEncoder(pl.LightningModule):
             # excepcted value is 0.0 ~ 1.0
             assert latent_op['randomize'] >= 0.0 and latent_op['randomize'] <= 1.0
             alpha = torch.tensor(latent_op['randomize']).to(device) - 0.5
-            hidden = hidden + (torch.randn_like(hidden) * alpha)
+            hidden = hidden + (torch.randn_like(hidden) * alpha * 5.0)
         
         if latent_op['SpectralCentroid'] != None:
             assert latent_op['SpectralCentroid'] >= 0.0 and latent_op['SpectralCentroid'] <= 1.0
             alpha = torch.tensor(latent_op['SpectralCentroid']).to(device) -0.5
-            hidden = hidden + (self.spectroCentroidZ * alpha)
+            hidden = hidden + (self.spectroCentroidZ * alpha * 100.0)
+            print("SpectralCentroid", alpha)
         
         if latent_op['SpectralSpread'] != None:
             assert latent_op['SpectralSpread'] >= 0.0 and latent_op['SpectralSpread'] <= 1.0

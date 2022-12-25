@@ -203,11 +203,19 @@ if __name__ == "__main__":
     }
 
     visualize = Visualize(
-        '2022-12-25-08:06:51.263955-LitAutoEncoder-1epoch-ess-yeojohnson-beta001-conditionCh1-Dec.ckpt'
+        #'2022-12-25-05:28:07.302207-LitAutoEncoder-1000epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt'
         #'2022-12-21-13:35:50.554203-LitAutoEncoder-4000epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt'
+        '2022-12-21-00:32:19.217358-LitAutoEncoder-7500epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt'
         )
     #visualize.z2wav()
     #visualize.plot_gridspectrum(eval=True,latent_op=latent_op,show=True,save=True)
     #visualize.plot_gridwaveform(eval=True,latent_op=latent_op,show=True,save=True)
-    visualize.read_waveform(idx=0,latent_op=latent_op,eval=True,save=True,show=True)
+    idx = 1
+    visualize.read_waveform(idx=1,latent_op=latent_op,eval=False,save=False,show=True)
+    visualize.read_waveform(idx=1,latent_op=latent_op,eval=True,save=False,show=True)
+    latent_op["SpectralCentroid"] = 0
+    visualize.read_waveform(idx=1,latent_op=latent_op,eval=True,save=False,show=True)
+    latent_op["SpectralCentroid"] = 1.0
+    visualize.read_waveform(idx=1,latent_op=latent_op,eval=True,save=False,show=True)
+
     print("done")
