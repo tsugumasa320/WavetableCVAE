@@ -192,8 +192,8 @@ class Visualize(EvalModelInit):
 if __name__ == "__main__":
     
     latent_op = {
-    "randomize": 1,
-    "SpectralCentroid": 0,
+    "randomize": None,
+    "SpectralCentroid": None,
     "SpectralSpread": None,
     "SpectralKurtosis": None,
     "ZeroCrossingRate": None,
@@ -203,7 +203,9 @@ if __name__ == "__main__":
     }
 
     visualize = Visualize(
-        '2022-12-21-13:35:50.554203-LitAutoEncoder-4000epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt')
+        '2022-12-25-08:06:51.263955-LitAutoEncoder-1epoch-ess-yeojohnson-beta001-conditionCh1-Dec.ckpt'
+        #'2022-12-21-13:35:50.554203-LitAutoEncoder-4000epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt'
+        )
     #visualize.z2wav()
     #visualize.plot_gridspectrum(eval=True,latent_op=latent_op,show=True,save=True)
     #visualize.plot_gridwaveform(eval=True,latent_op=latent_op,show=True,save=True)
