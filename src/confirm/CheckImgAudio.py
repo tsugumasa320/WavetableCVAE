@@ -28,7 +28,7 @@ class EvalModelInit():
     def __init__(self, ckpt_path:str):
         read_path = root / "torchscript"/ Path(ckpt_path)
         self.dataset = Dataset.AKWDDataset(root=data_dir)
-        self.dm = DataModule.AWKDDataModule(batch_size=32, data_dir= data_dir) 
+        self.dm = DataModule.AWKDDataModule(batch_size=32, data_dir= data_dir)
         self.model = self._read_model(read_path)
 
     def _read_model(self,path:Path):
@@ -103,7 +103,7 @@ class EvalModelInit():
                                                         normalized=True,
                                                         onesided=True,
                                                         power=2.0)
-            
+
         ToDB =  torchaudio.transforms.AmplitudeToDB(stype = 'power',top_db = 80)
 
         combain_x = waveform.reshape(1, -1) # [3600] -> [1,3600]
@@ -129,7 +129,7 @@ class Visualize(EvalModelInit):
         return wav
 
     def plot_gridspectrum(self,eval:bool=False,nrows:int=4, ncols:int=5,latent_op=None,show:bool=False,save:bool=False):
-        
+
         # 訓練データの波形を見る
         fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(nrows*ncols,nrows*ncols/2),tight_layout=True)
         fig.patch.set_facecolor("white")
@@ -147,13 +147,13 @@ class Visualize(EvalModelInit):
                 x = self.model_eval(x.unsqueeze(0),attrs,latent_op)
             elif eval == False:
                 x = x.unsqueeze(0)
-            
+
             x = self._scw_combain_spec(x,6)
             axs[i//ncols, i%ncols].set_title(attrs['name'])
             axs[i//ncols, i%ncols].set_xlabel("Freq_bin")
             axs[i//ncols, i%ncols].set_ylabel("power[dB]")
             axs[i//ncols, i%ncols].plot(x.squeeze(0))
-            
+
         if save == True:
             fig.savefig(output_dir / "grid_spectrum.png")
         if show == True:
@@ -178,19 +178,19 @@ class Visualize(EvalModelInit):
                 x = self._eval_waveform(x,attrs,latent_op)
             elif eval == False:
                 pass
-            
+
             axs[i//ncols, i%ncols].set_title(attrs['name'])
             axs[i//ncols, i%ncols].set_xlabel("time[s]")
             axs[i//ncols, i%ncols].set_ylabel("Amp")
             axs[i//ncols, i%ncols].plot(x.squeeze(0).cpu())
-        
+
         if save == True:
             plt.savefig(output_dir / f"gridwaveform.png")
         if show == True:
             plt.show()
 
 if __name__ == "__main__":
-    
+
     latent_op = {
     "randomize": None,
     "SpectralCentroid": None,
@@ -205,17 +205,22 @@ if __name__ == "__main__":
     visualize = Visualize(
         #'2022-12-25-05:28:07.302207-LitAutoEncoder-1000epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt'
         #'2022-12-21-13:35:50.554203-LitAutoEncoder-4000epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt'
-        '2022-12-21-00:32:19.217358-LitAutoEncoder-7500epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt'
+        #'2022-12-21-00:32:19.217358-LitAutoEncoder-7500epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt'
+        '2022-12-26-02:26:47.614961-LitAutoEncoder-10000epoch-ess-yeojohnson-beta001-conditionCh1-Dec.ckpt'
         )
     #visualize.z2wav()
     #visualize.plot_gridspectrum(eval=True,latent_op=latent_op,show=True,save=True)
     #visualize.plot_gridwaveform(eval=True,latent_op=latent_op,show=True,save=True)
-    idx = 1
-    visualize.read_waveform(idx=1,latent_op=latent_op,eval=False,save=False,show=True)
-    visualize.read_waveform(idx=1,latent_op=latent_op,eval=True,save=False,show=True)
-    latent_op["SpectralCentroid"] = 0
-    visualize.read_waveform(idx=1,latent_op=latent_op,eval=True,save=False,show=True)
-    latent_op["SpectralCentroid"] = 1.0
-    visualize.read_waveform(idx=1,latent_op=latent_op,eval=True,save=False,show=True)
+    idx = 100
+    label_name = "PitchSalience"
+
+    visualize.read_waveform(idx=idx,latent_op=latent_op,eval=False,save=False,show=True)
+    visualize.read_waveform(idx=idx,latent_op=latent_op,eval=True,save=False,show=True)
+    latent_op[label_name] = -0.5
+    print(latent_op)
+    visualize.read_waveform(idx=idx,latent_op=latent_op,eval=True,save=False,show=True)
+    latent_op[label_name] = 1.5
+    print(latent_op)
+    visualize.read_waveform(idx=idx,latent_op=latent_op,eval=True,save=False,show=True)
 
     print("done")
