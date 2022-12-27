@@ -3,7 +3,7 @@ from math import tau
 import torch
 import numpy as np
 import soundfile as sf
-from src.confirm.CheckImgAudio import EvalModelInit
+from . import EvalModelInit
 import pyrootutils
 
 root = pyrootutils.setup_root(

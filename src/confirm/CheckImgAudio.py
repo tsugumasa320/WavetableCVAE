@@ -1,8 +1,8 @@
 from pathlib import Path
-from torch.utils.data import Dataset  # ,DataLoader  # 追加
+from . import Dataset  # ,DataLoader  # 追加
 
-from src.dataio import DataModule
-from src.models import VAE4Wavetable
+from . import DataModule
+from . import VAE4Wavetable
 
 import torch
 import torchaudio

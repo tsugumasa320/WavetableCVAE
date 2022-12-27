@@ -1,5 +1,5 @@
 from torch.utils.data import Dataset  # DataLoader,
-from src.dataio import Dataset
+from . import Dataset
 import matplotlib.pyplot as plt
 import pyrootutils
 
