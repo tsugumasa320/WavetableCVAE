@@ -73,7 +73,7 @@ class TrainerWT(pl.LightningModule):
     def save_model(self,comment=""):
         save_path = root / "torchscript"
         model_save(self.model, self.trainer, save_path, comment=str(self.epoch) + "epoch" + comment)
-        print(save_path)
+        print("save_model!",save_path)
 
     def test(self):
         self.model.eval()

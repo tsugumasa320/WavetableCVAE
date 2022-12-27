@@ -5,6 +5,7 @@ import torchaudio
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from .components import Submodule
 from src.dataio import Dataset
+from pytorch_memlab import profile
 
 import pyrootutils
 
@@ -17,14 +18,14 @@ root = pyrootutils.setup_root(
 data_dir = root / "data"
 
 class LitAutoEncoder(pl.LightningModule):
-    
+
     def __init__(self, sample_points: int=600, beta: float=1, duplicate_num: int=6): #Define computations here
         super().__init__()
         assert sample_points == 600
         assert duplicate_num == 6
 
         self.sample_points = sample_points
-        self.duplicate_num = duplicate_num 
+        self.duplicate_num = duplicate_num
         #self.logging_graph_flg = True
 
         self.encoder = nn.Sequential(
@@ -51,13 +52,14 @@ class LitAutoEncoder(pl.LightningModule):
 
         #self.hidden2mu = nn.Linear(embed_dim,embed_dim)
         #self.hidden2log_var = nn.Linear(embed_dim,embed_dim)
-        self.hidden2mu = nn.Conv1d(in_channels=512, out_channels=128, kernel_size=1, stride=1, padding=0)
-        self.hidden2log_var = nn.Conv1d(in_channels=512, out_channels=128, kernel_size=1, stride=1, padding=0)
-        
+        self.hidden2mu = nn.Conv1d(in_channels=512+9, out_channels=128, kernel_size=1, stride=1, padding=0)
+        self.hidden2log_var = nn.Conv1d(in_channels=512+9, out_channels=128, kernel_size=1, stride=1, padding=0)
+
         self.beta = beta
         self.loudness = Submodule.Loudness(44100, 3600)
         self.distance = Submodule.Distance(scales=[3600],overlap=0)
 
+        """
         self.spectroCentroidZ = []
         self.spectroSpreadZ = []
         self.spectroKurtosisZ = []
@@ -66,14 +68,17 @@ class LitAutoEncoder(pl.LightningModule):
         self.pitchSalienceZ = []
         self.HnrZ = []
         self._latentdimAttributesCalc()
+        """
 
     def forward(self, x: torch.Tensor, attrs:dict, latent_op:dict=None)->Tuple[torch.Tensor,torch.Tensor,torch.Tensor]: # Use for inference only (separate from training_step)
 
         #x = self._conditioning(x, attrs,size=1)
-        mu, log_var = self.encode(x)
+        mu, log_var = self.encode(x,attrs)
         hidden = self._reparametrize(mu, log_var)
+        """
         if latent_op is not None:
-            hidden = self._latentdimControler(hidden, latent_op)        
+            hidden = self._latentdimControler(hidden, latent_op)
+        """
         hidden = self._conditioning(hidden,attrs,size=1)
         output = self.decode(hidden) # torch.tensor(np.hanning(600)).to(device)
         return mu, log_var, output
@@ -82,7 +87,7 @@ class LitAutoEncoder(pl.LightningModule):
 
         device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         dataset = Dataset.AKWDDataset(root= data_dir / "AKWF_44k1_600s")
-        
+
         CentroidTmp = torch.zeros(1,128,140).to(device)
         CentroidSum = torch.zeros(1,128,140).to(device)
         SpreadTmp = torch.zeros(1,128,140).to(device)
@@ -130,7 +135,7 @@ class LitAutoEncoder(pl.LightningModule):
             Hnr = torch.tensor(attrs["HNR"]).to(device)
             HnrTmp += hidden * Hnr
             HnrSum += Hnr
-        
+
         self.spectroCentroidZ = CentroidTmp / CentroidSum
         self.spectroSpreadZ = SpreadTmp / SpreadSum
         self.spectroKurtosisZ = KurtosisTmp / KurtosisSum
@@ -139,26 +144,26 @@ class LitAutoEncoder(pl.LightningModule):
         self.pitchSalienceZ = pitchSalienceTmp / pitchSalienceSum
         self.HnrZ = HnrTmp / HnrSum
 
-    def _latentdimControler(self, hidden:torch.tensor, latent_op:dict=None):  
+    def _latentdimControler(self, hidden:torch.tensor, latent_op:dict=None):
         #print("_latentdimControler")
-        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')      
+        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         if latent_op['randomize'] != None:
             # excepcted value is 0.0 ~ 1.0
             assert latent_op['randomize'] >= 0.0 and latent_op['randomize'] <= 1.0
             alpha = torch.tensor(latent_op['randomize']).to(device) - 0.5
             hidden = hidden + (torch.randn_like(hidden) * alpha * 5.0)
-        
+
         if latent_op['SpectralCentroid'] != None:
             assert latent_op['SpectralCentroid'] >= 0.0 and latent_op['SpectralCentroid'] <= 1.0
             alpha = torch.tensor(latent_op['SpectralCentroid']).to(device) -0.5
             hidden = hidden + (self.spectroCentroidZ * alpha * 100.0)
             print("SpectralCentroid", alpha)
-        
+
         if latent_op['SpectralSpread'] != None:
             assert latent_op['SpectralSpread'] >= 0.0 and latent_op['SpectralSpread'] <= 1.0
             alpha = torch.tensor(latent_op['SpectralSpread']).to(device) -0.5
             hidden = hidden + (self.spectroSpreadZ * alpha)
-        
+
         if latent_op['SpectralKurtosis'] != None:
             assert latent_op['SpectralKurtosis'] >= 0.0 and latent_op['SpectralKurtosis'] <= 1.0
             alpha = torch.tensor(latent_op['SpectralKurtosis']).to(device) -0.5
@@ -186,14 +191,15 @@ class LitAutoEncoder(pl.LightningModule):
 
         return hidden
 
-    def encode(self, x:torch.Tensor)->Tuple[torch.Tensor,torch.Tensor]:
+    def encode(self, x:torch.Tensor, attrs:dict)->Tuple[torch.Tensor,torch.Tensor]:
         hidden = self.encoder(x)
+        hidden = self._conditioning(hidden,attrs,size=1)
         mu = self.hidden2mu(hidden)
         log_var = self.hidden2log_var(hidden)
         return mu, log_var
 
     def _reparametrize(self,mu: torch.Tensor,log_var :torch.Tensor) -> torch.Tensor:
-        #Reparametrization Trick to allow gradients to backpropagate from the 
+        #Reparametrization Trick to allow gradients to backpropagate from the
         #stochastic part of the model
         sigma = torch.exp(0.5*log_var)
         eps = torch.randn_like(sigma)
@@ -221,79 +227,80 @@ class LitAutoEncoder(pl.LightningModule):
         mu, log_var, x_out = self.forward(x,attrs)
         spec_x = self._scw2spectrum(x)
         spec_x_out = self._scw2spectrum(x_out)
-        
+
         # RAVE Loss
         loud_x = self.loudness(spec_x)
         loud_x_out = self.loudness(spec_ｘ_out)
         self.loud_dist = (loud_x - loud_x_out).pow(2).mean()
         self.spec_recon_loss = self.distance(spec_x,spec_x_out)
 
-        kl_loss = (-0.5*(1+log_var - mu**2 - 
+        kl_loss = (-0.5*(1+log_var - mu**2 -
                          torch.exp(log_var)).sum(dim=1)) #sumは潜在変数次元分を合計させている?
-        self.kl_loss = kl_loss.mean() 
-        
-        self.loss = self.spec_recon_loss + self.loud_dist + self.beta * self.kl_loss        
+        self.kl_loss = kl_loss.mean()
 
-        self.log(f"{stage}_kl_loss", self.kl_loss, on_step = True, on_epoch = True)
-        self.log(f"{stage}_spec_recon_loss", self.spec_recon_loss, on_step = True, on_epoch = True)
-        self.log(f"{stage}_loss", self.loss,on_step = True, on_epoch = True, prog_bar=True)
+        self.loss = self.spec_recon_loss + self.loud_dist + self.beta * self.kl_loss
+
+        self.log(f"{stage}_kl_loss", self.kl_loss, on_step = True, on_epoch = False)
+        self.log(f"{stage}_spec_recon_loss", self.spec_recon_loss, on_step = True, on_epoch = False)
+        self.log(f"{stage}_loss", self.loss,on_step = True, on_epoch = False, prog_bar=True)
         return self.loss
-    
+
     def _conditioning(self, x:torch.Tensor, attrs:dict, size:int) -> torch.Tensor:
 
         device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        
-        # model.loadした時にエラーが出る
-        #bright = ((attrs["brightness"]/100).clone().detach() # 0~1に正規化
-        #rough = ((attrs["roughness"]/100).clone().detach()
-        #depth = ((attrs["depth"]/100).clone().detach()
 
-        # Warningは出るがエラーは出ないので仮置き
-        #bright = torch.tensor(attrs["brightness"]/100) # 0~1に正規化
-        #rough = torch.tensor(attrs["roughness"]/100)
-        #depth = torch.tensor(attrs["depth"]/100)
+        with torch.no_grad():
+            # model.loadした時にエラーが出る
+            #bright = ((attrs["brightness"]/100).clone().detach() # 0~1に正規化
+            #rough = ((attrs["roughness"]/100).clone().detach()
+            #depth = ((attrs["depth"]/100).clone().detach()
 
-        Centroid = torch.tensor(attrs["SpectralCentroid"])
-        Spread = torch.tensor(attrs["SpectralSpread"])
-        Kurtosis = torch.tensor(attrs["SpectralKurtosis"])
-        ZeroX = torch.tensor(attrs["ZeroCrossingRate"])
-        Complex = torch.tensor(attrs["SpectralComplexity"])
-        OddEven = torch.tensor(attrs["OddToEvenHarmonicEnergyRatio"])
-        Dissonance = torch.tensor(attrs["Dissonance"])
-        PitchSalience = torch.tensor(attrs["PitchSalience"])
-        Hnr = torch.tensor(attrs["HNR"])
-        
-        y = torch.ones([x.shape[0], size, x.shape[2]]).permute(2,1,0) #[600,1,32] or [140,256,32]
-        #bright_y = y.to(device) * bright.to(device) # [D,C,B]*[B]
-        #rough_y = y.to(device) * rough.to(device)
-        #depth_y = y.to(device) * depth.to(device)
-        
-        Centroid_y = y.to(device) * Centroid.to(device)
-        Spread_y = y.to(device) * Spread.to(device)
-        Kurtosis_y = y.to(device) * Kurtosis.to(device)
-        ZeroX_y = y.to(device) * ZeroX.to(device)
-        Complex_y = y.to(device) * Complex.to(device)
-        OddEven_y = y.to(device) * OddEven.to(device)
-        Dissonance_y = y.to(device) * Dissonance.to(device)
-        PitchSalience_y = y.to(device) * PitchSalience.to(device)
-        Hnr_y = y.to(device) * Hnr.to(device)
+            # Warningは出るがエラーは出ないので仮置き
+            #bright = torch.tensor(attrs["brightness"]/100) # 0~1に正規化
+            #rough = torch.tensor(attrs["roughness"]/100)
+            #depth = torch.tensor(attrs["depth"]/100)
 
-        x = x.to(device)
-        #x = torch.cat([x, bright_y.permute(2,1,0)], dim=1).to(torch.float32) 
-        #x = torch.cat([x, rough_y.permute(2,1,0)], dim=1).to(torch.float32) 
-        #x = torch.cat([x, depth_y.permute(2,1,0)], dim=1).to(torch.float32) 
-        x = torch.cat([x, Centroid_y.permute(2,1,0)], dim=1).to(torch.float32)
-        x = torch.cat([x, Spread_y.permute(2,1,0)], dim=1).to(torch.float32)
-        x = torch.cat([x, Kurtosis_y.permute(2,1,0)], dim=1).to(torch.float32)
-        x = torch.cat([x, ZeroX_y.permute(2,1,0)], dim=1).to(torch.float32)
-        x = torch.cat([x, Complex_y.permute(2,1,0)], dim=1).to(torch.float32)
-        x = torch.cat([x, OddEven_y.permute(2,1,0)], dim=1).to(torch.float32)
-        x = torch.cat([x, Dissonance_y.permute(2,1,0)], dim=1).to(torch.float32)
-        x = torch.cat([x, PitchSalience_y.permute(2,1,0)], dim=1).to(torch.float32)
-        x = torch.cat([x, Hnr_y.permute(2,1,0)], dim=1).to(torch.float32)
+            Centroid = torch.tensor(attrs["SpectralCentroid"])
+            Spread = torch.tensor(attrs["SpectralSpread"])
+            Kurtosis = torch.tensor(attrs["SpectralKurtosis"])
+            ZeroX = torch.tensor(attrs["ZeroCrossingRate"])
+            Complex = torch.tensor(attrs["SpectralComplexity"])
+            OddEven = torch.tensor(attrs["OddToEvenHarmonicEnergyRatio"])
+            Dissonance = torch.tensor(attrs["Dissonance"])
+            PitchSalience = torch.tensor(attrs["PitchSalience"])
+            Hnr = torch.tensor(attrs["HNR"])
 
-        #print(x.shape)
-        
+            y = torch.ones([x.shape[0], size, x.shape[2]]).permute(2,1,0) #[600,1,32] or [140,256,32]
+            #bright_y = y.to(device) * bright.to(device) # [D,C,B]*[B]
+            #rough_y = y.to(device) * rough.to(device)
+            #depth_y = y.to(device) * depth.to(device)
+
+            Centroid_y = y.to(device) * Centroid.to(device)
+            Spread_y = y.to(device) * Spread.to(device)
+            Kurtosis_y = y.to(device) * Kurtosis.to(device)
+            ZeroX_y = y.to(device) * ZeroX.to(device)
+            Complex_y = y.to(device) * Complex.to(device)
+            OddEven_y = y.to(device) * OddEven.to(device)
+            Dissonance_y = y.to(device) * Dissonance.to(device)
+            PitchSalience_y = y.to(device) * PitchSalience.to(device)
+            Hnr_y = y.to(device) * Hnr.to(device)
+
+            x = x.to(device)
+            #x = torch.cat([x, bright_y.permute(2,1,0)], dim=1).to(torch.float32)
+            #x = torch.cat([x, rough_y.permute(2,1,0)], dim=1).to(torch.float32)
+            #x = torch.cat([x, depth_y.permute(2,1,0)], dim=1).to(torch.float32)
+            x = torch.cat([x, Centroid_y.permute(2,1,0)], dim=1).to(torch.float32)
+            x = torch.cat([x, Spread_y.permute(2,1,0)], dim=1).to(torch.float32)
+            x = torch.cat([x, Kurtosis_y.permute(2,1,0)], dim=1).to(torch.float32)
+            x = torch.cat([x, ZeroX_y.permute(2,1,0)], dim=1).to(torch.float32)
+            x = torch.cat([x, Complex_y.permute(2,1,0)], dim=1).to(torch.float32)
+            x = torch.cat([x, OddEven_y.permute(2,1,0)], dim=1).to(torch.float32)
+            x = torch.cat([x, Dissonance_y.permute(2,1,0)], dim=1).to(torch.float32)
+            x = torch.cat([x, PitchSalience_y.permute(2,1,0)], dim=1).to(torch.float32)
+            x = torch.cat([x, Hnr_y.permute(2,1,0)], dim=1).to(torch.float32)
+
+            #print(x.shape)
+
         return x
 
     def _scw2spectrum(self, x:torch.Tensor) -> torch.Tensor:
@@ -307,7 +314,7 @@ class LitAutoEncoder(pl.LightningModule):
                 tmp = torch.cat([tmp, self._scw_combain(single_channel_scw)]) #[901*i,1]
 
         return tmp
- 
+
     def _scw_combain(self, scw:torch.Tensor) -> torch.Tensor:
 
         scw = scw.reshape(self.sample_points) #[1,1,600] -> [600]
@@ -340,12 +347,12 @@ class LitAutoEncoder(pl.LightningModule):
         x,attrs = self._prepare_batch(batch)
         tensorboard = self.logger.experiment
         tensorboard.add_graph(self, x) #graph表示
-        
+
     def _logging_hparams(self): # not used
 
         tensorboard = self.logger.experiment
-        tensorboard.add_hparams({'N_FFT': N_FFT, 'HOP_LENGTH': HOP_LENGTH,'MELSTFT_FLG':MELSTFT_FLG, 
+        tensorboard.add_hparams({'N_FFT': N_FFT, 'HOP_LENGTH': HOP_LENGTH,'MELSTFT_FLG':MELSTFT_FLG,
                                  'SEED':SEED, 'SAMPLE_RATE':SAMPLE_RATE, 'MAX_SECONDS' :MAX_SECONDS,
-                                 'NUM_TRAIN':NUM_TRAIN, 'NUM_VAL':NUM_VAL, 'LOAD_IDX':LOAD_IDX, 'LR': LR, 
+                                 'NUM_TRAIN':NUM_TRAIN, 'NUM_VAL':NUM_VAL, 'LOAD_IDX':LOAD_IDX, 'LR': LR,
                                  'BATCH_SIZE': BATCH_SIZE, 'MAX_EPOCHS': MAX_EPOCHS},{})
                                 #{'hparam/accuracy': 10, 'hparam/loss': 10})

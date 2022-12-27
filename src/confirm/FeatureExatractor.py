@@ -44,7 +44,7 @@ class FeatureExatractorInit(EvalModelInit):
         self.ess_spectrum = ess.Spectrum(size=3600)
 
     def ytn_audio_exatractor(self, audio: torch.Tensor, attrs: dict):
-    
+
         # 6つ繋げたWavetableを保存する
         torchaudio.save(filepath='tmp.wav', src=audio.to('cpu'), sample_rate=44100)
         # 読み込む
@@ -53,7 +53,7 @@ class FeatureExatractorInit(EvalModelInit):
 
         # 保存したファイルを削除する
         os.remove('tmp.wav')
-        
+
         c = self.centroid(ess_spec)
         sp, _, k = self.distributionShape(self.centralMoments(ess_spec))
 
@@ -123,7 +123,7 @@ class FeatureExatractorInit(EvalModelInit):
 
         return cond_label,est_label
 
-    def ConditionLabelEvalPlt(self,label1,label2,label_name:str):  
+    def ConditionLabelEvalPlt(self,label1,label2,label_name:str):
         #折れ線グラフ表示
         p1 = plt.plot(label1,linewidth=2)
         p2 = plt.plot(label2,linewidth=2) #linestyle="dashed")
@@ -158,16 +158,16 @@ class FeatureExatractorInit(EvalModelInit):
             est_data = h
         else:
             raise Exception('Error!')
-        
+
         return est_data
 
-    def plot_condition_results(self):
+    def plot_condition_results(self,mode="cond"):
 
         attrs_label = ["SpectralCentroid","SpectralSpread","SpectralKurtosis","ZeroCrossingRate","OddToEvenHarmonicEnergyRatio","PitchSalience","HNR"]
         dm_num = 15
 
         fig, axes = plt.subplots(dm_num, len(attrs_label)+2,figsize=(30,3*dm_num),tight_layout=True)
-        resolution_num = 10
+        resolution_num = 100
         x = np.array(range(resolution_num+1)) / resolution_num
 
         CentroidMAE = 0
@@ -200,7 +200,7 @@ class FeatureExatractorInit(EvalModelInit):
                         dm_num=j,
                         resolution_num=resolution_num,
                         bias=10,
-                        mode="latent"
+                        mode=mode
                         )
 
                     axes[j,i].set_title(attrs_label[i-2])
@@ -304,7 +304,7 @@ def Normalize(list,normalize_method:str,label_name):
         }
         list = min_max_for_WT(list,label_name,settings)
     else:
-        raise Exception('Error!') 
+        raise Exception('Error!')
 
     return list
 
@@ -366,9 +366,12 @@ def yeojonson_for_WT(list,label_name:str,sett):
     else:
         raise Exception('Error!')
     return list
-        
+
 if __name__ == "__main__":
     featureExatractorInit = FeatureExatractorInit(
-        ckpt_path="2022-12-21-13:35:50.554203-LitAutoEncoder-4000epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt"
+        ckpt_path=
+        #"2022-12-21-13:35:50.554203-LitAutoEncoder-4000epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt"
+        #'2022-12-26-04:23:14.635999-LitAutoEncoder-10000epoch-ess-yeojohnson-beta001-conditionCh1-Dec.ckpt'
+        '2022-12-27-12:32:17.145396-LitAutoEncoder-10000epoch-ess-yeojohnson-beta001-conditionCh1-Dec.ckpt'
         )
-    featureExatractorInit.plot_condition_results()
+    featureExatractorInit.plot_condition_results(mode="cond")
