@@ -9,7 +9,7 @@ from scipy import stats
 import statistics
 import numpy as np
 from tqdm import tqdm
-from . import EvalModelInit
+from src.confirm.CheckImgAudio import EvalModelInit
 import pyrootutils
 
 root = pyrootutils.setup_root(

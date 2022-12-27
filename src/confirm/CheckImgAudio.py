@@ -1,13 +1,25 @@
-from pathlib import Path
-from . import Dataset  # ,DataLoader  # 追加
+import pyrootutils
 
-from . import DataModule
-from . import VAE4Wavetable
+root = pyrootutils.setup_root(
+    search_from=__file__,
+    indicator=["README.md", "LICENSE", ".git"],
+    project_root_env_var=True,  # set the PROJECT_ROOT environment variable to root directory
+    dotenv=True,
+    pythonpath=True,  # add root directory to the PYTHONPATH (helps with imports)
+    cwd=True,  # change current working directory to the root directory (helps with filepaths)
+)
+data_dir = root / "data/AKWF_44k1_600s"
+output_dir = root / "output"
+
+
+from pathlib import Path
+from src.dataio import Dataset  # ,DataLoader  # 追加
+from src.dataio import DataModule
+from src.models import VAE4Wavetable
 
 import torch
 import torchaudio
 import matplotlib.pyplot as plt
-import pyrootutils
 
 root = pyrootutils.setup_root(
     search_from=__file__,
@@ -242,29 +254,29 @@ if __name__ == "__main__":
         # '2022-12-25-05:28:07.302207-LitAutoEncoder-1000epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt'
         # '2022-12-21-13:35:50.554203-LitAutoEncoder-4000epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt'
         # '2022-12-21-00:32:19.217358-LitAutoEncoder-7500epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt'
-        "2022-12-26-02:26:47.614961-LitAutoEncoder-10000epoch-ess-yeojohnson-beta001-conditionCh1-Dec.ckpt"
+        "2022-12-27-12:32:17.145396-LitAutoEncoder-10000epoch-ess-yeojohnson-beta001-conditionCh1-EncOutDecIn.ckpt"
     )
     # visualize.z2wav()
     # visualize.plot_gridspectrum(eval=True,latent_op=latent_op,show=True,save=True)
     # visualize.plot_gridwaveform(eval=True,latent_op=latent_op,show=True,save=True)
-    idx = 100
+    idx = 1
     label_name = "PitchSalience"
 
     visualize.read_waveform(
-        idx=idx, latent_op=latent_op, eval=False, save=False, show=True
+        idx=idx, latent_op=None, eval=False, save=False, show=True
     )
     visualize.read_waveform(
-        idx=idx, latent_op=latent_op, eval=True, save=False, show=True
+        idx=idx, latent_op=None, eval=True, save=False, show=True
     )
     latent_op[label_name] = -0.5
     print(latent_op)
     visualize.read_waveform(
-        idx=idx, latent_op=latent_op, eval=True, save=False, show=True
+        idx=idx, latent_op=None, eval=True, save=False, show=True
     )
     latent_op[label_name] = 1.5
     print(latent_op)
     visualize.read_waveform(
-        idx=idx, latent_op=latent_op, eval=True, save=False, show=True
+        idx=idx, latent_op=None, eval=True, save=False, show=True
     )
 
     print("done")

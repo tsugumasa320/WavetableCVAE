@@ -1,6 +1,6 @@
 import pytorch_lightning as pl
 import torch
-from . import Dataset
+from src.dataio import Dataset
 import pyrootutils
 
 root = pyrootutils.setup_root(

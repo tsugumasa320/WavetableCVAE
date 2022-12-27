@@ -2,10 +2,10 @@ import torch
 import pytorch_lightning as pl
 
 from utils import torch_fix_seed, model_save
-from . import AWKDDataModule
-from . import LitAutoEncoder
-from . import MyPrintingCallback
-from . import find_latest_checkpoints
+from dataio.DataModule import AWKDDataModule
+from models.VAE4Wavetable import LitAutoEncoder
+from models.components.Callbacks import MyPrintingCallback
+from tools.Find_latest_checkpoints import find_latest_checkpoints
 
 import pyrootutils
 

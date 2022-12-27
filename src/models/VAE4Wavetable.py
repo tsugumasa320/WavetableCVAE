@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from typing import Tuple  # ,Any, Callable, Dict, List, Optional
 from .components import Submodule
-from . import Dataset
+from src.dataio import Dataset
 import pyrootutils
 
 root = pyrootutils.setup_root(
