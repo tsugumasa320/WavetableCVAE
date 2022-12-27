@@ -104,8 +104,11 @@ class LitAutoEncoder(pl.LightningModule):
         # x = self._conditioning(x, attrs,size=1)
         mu, log_var = self.encode(x, attrs)
         hidden = self._reparametrize(mu, log_var)
+        """
         if latent_op is not None:
             hidden = self._latentdimControler(hidden, latent_op)
+        """
+
         hidden = self._conditioning(hidden, attrs, size=1)
         output = self.decode(hidden)  # torch.tensor(np.hanning(600)).to(device)
         return mu, log_var, output
