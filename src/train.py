@@ -96,7 +96,7 @@ if __name__ == "__main__":
         seed=42,
         device="cuda" if torch.cuda.is_available() else "cpu",
     )
-    trainerWT.train(resume=True)
+    trainerWT.train(resume=False)
     trainerWT.save_model(comment="-ess-yeojohnson-beta001-conditionCh1-encODecI")
     # trainerWT.test()
     print("Done!")
