@@ -1,14 +1,13 @@
-import pytorch_lightning as pl
-import torch
-from src.dataio import Dataset
 import pyrootutils
-
 root = pyrootutils.setup_root(
     search_from=__file__,
     indicator=["README.md", "LICENSE", ".git"],
     pythonpath=True,
     # dotenv=True,
 )
+import pytorch_lightning as pl
+import torch
+from src.dataio import Dataset
 
 
 # LightningDataModuleはDataLoaderとなるクラス

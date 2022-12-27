@@ -48,7 +48,7 @@ class TrainerWT(pl.LightningModule):
         self.trainer = pl.Trainer(
             max_epochs=epoch,
             enable_checkpointing=True,
-            log_every_n_steps=1,
+            #log_every_n_steps=1,
             callbacks=[MyPrintingCallback()],
             auto_lr_find=True,
             auto_scale_batch_size=True,
@@ -90,13 +90,13 @@ class TrainerWT(pl.LightningModule):
 if __name__ == "__main__":
     trainerWT = TrainerWT(
         model=LitAutoEncoder(sample_points=600, beta=0.01),
-        epoch=1,
+        epoch=15000,
         batch_size=32,
         data_dir=data_dir,
         seed=42,
         device="cuda" if torch.cuda.is_available() else "cpu",
     )
     trainerWT.train(resume=True)
-    trainerWT.save_model(comment="-ess-yeojohnson-beta001-conditionCh1-Dec")
+    trainerWT.save_model(comment="-ess-yeojohnson-beta001-conditionCh1-encODecI")
     # trainerWT.test()
     print("Done!")
