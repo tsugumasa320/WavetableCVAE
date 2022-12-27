@@ -1,7 +1,5 @@
-import os
 import torch
 import pytorch_lightning as pl
-from pytorch_lightning import Trainer
 
 from utils import torch_fix_seed, model_save
 from dataio.DataModule import AWKDDataModule
@@ -13,9 +11,9 @@ import pyrootutils
 
 root = pyrootutils.setup_root(
     search_from=__file__,
-    indicator=["README.md","LICENSE",".git"],
+    indicator=["README.md", "LICENSE", ".git"],
     pythonpath=True,
-    #dotenv=True,
+    # dotenv=True,
 )
 data_dir = root / "data/AKWF_44k1_600s"
 
@@ -56,9 +54,9 @@ class TrainerWT(pl.LightningModule):
             auto_scale_batch_size=True,
             accelerator=accelerator,
             devices=devices,
-            )
+        )
 
-    def train(self,resume:bool=False):
+    def train(self, resume: bool = False):
 
         print("Training...")
 
@@ -70,27 +68,35 @@ class TrainerWT(pl.LightningModule):
 
         self.trainer.fit(self.model, self.dm, ckpt_path=resume_ckpt)
 
-    def save_model(self,comment=""):
+    def save_model(self, comment=""):
         save_path = root / "torchscript"
-        model_save(self.model, self.trainer, save_path, comment=str(self.epoch) + "epoch" + comment)
+        model_save(
+            self.model,
+            self.trainer,
+            save_path,
+            comment=str(self.epoch) + "epoch" + comment,
+        )
         print(save_path)
 
     def test(self):
         self.model.eval()
-        self.trainer.test(self.model, self.dm,)
+        self.trainer.test(
+            self.model,
+            self.dm,
+        )
         self.model.train()
 
 
 if __name__ == "__main__":
     trainerWT = TrainerWT(
-        model=LitAutoEncoder(sample_points=600,beta=0.01),
+        model=LitAutoEncoder(sample_points=600, beta=0.01),
         epoch=10000,
         batch_size=32,
         data_dir=data_dir,
         seed=42,
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        device="cuda" if torch.cuda.is_available() else "cpu",
     )
     trainerWT.train(resume=True)
     trainerWT.save_model(comment="-ess-yeojohnson-beta001-conditionCh1-Dec")
-    #trainerWT.test()
+    # trainerWT.test()
     print("Done!")
