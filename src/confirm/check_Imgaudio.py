@@ -154,7 +154,7 @@ class Visualize(EvalModelInit):
         ncols: int = 5,
         latent_op=None,
         show: bool = False,
-        save: bool = False,
+        save_path: Path or str = None,
     ):
 
         # 訓練データの波形を見る
@@ -187,8 +187,9 @@ class Visualize(EvalModelInit):
             axs[i // ncols, i % ncols].set_ylabel("power[dB]")
             axs[i // ncols, i % ncols].plot(x.squeeze(0))
 
-        if save is True:
-            fig.savefig(output_dir / "grid_spectrum.png")
+        if save_path is not None:
+            plt.savefig(save_path + "-gridspec.png")
+
         if show is True:
             plt.show()
 
@@ -199,7 +200,7 @@ class Visualize(EvalModelInit):
         ncols: int = 5,
         latent_op=None,
         show: bool = False,
-        save: bool = False,
+        save_path: Path or str = None,
     ):
 
         # 訓練データの波形を見る
@@ -231,8 +232,8 @@ class Visualize(EvalModelInit):
             axs[i // ncols, i % ncols].set_ylabel("Amp")
             axs[i // ncols, i % ncols].plot(x.squeeze(0).cpu())
 
-        if save is True:
-            plt.savefig(output_dir / "gridwaveform.png")
+        if save_path is not None:
+            plt.savefig(save_path + "-gridwave.png")
         if show is True:
             plt.show()
 
@@ -257,8 +258,8 @@ if __name__ == "__main__":
         "2022-12-27-12:32:17.145396-LitAutoEncoder-10000epoch-ess-yeojohnson-beta001-conditionCh1-EncOutDecIn.ckpt"
     )
     # visualize.z2wav()
-    # visualize.plot_gridspectrum(eval=True,latent_op=latent_op,show=True,save=True)
-    # visualize.plot_gridwaveform(eval=True,latent_op=latent_op,show=True,save=True)
+    # visualize.plot_gridspectrum(eval=True,latent_op=latent_op,show=True,save_path=None)
+    # visualize.plot_gridwaveform(eval=True,latent_op=latent_op,show=True,save_path=None)
     idx = 1
     label_name = "PitchSalience"
 

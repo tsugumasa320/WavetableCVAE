@@ -5,7 +5,9 @@ from utils import torch_fix_seed, model_save
 from dataio.DataModule import AWKDDataModule
 from models.VAE4Wavetable import LitAutoEncoder
 from models.components.Callbacks import MyPrintingCallback
-from tools.Find_latest_checkpoints import find_latest_checkpoints
+from tools.Find_latest_checkpoints import *
+from confirm.check_audiofeature import FeatureExatractorInit
+from confirm.check_Imgaudio import *
 
 import pyrootutils
 
@@ -16,6 +18,8 @@ root = pyrootutils.setup_root(
     # dotenv=True,
 )
 data_dir = root / "data/AKWF_44k1_600s"
+ckpt_dir = root / "lightning_logs/*/checkpoints"
+pllog_dir = root / "lightning_logs"
 
 
 class TrainerWT(pl.LightningModule):
@@ -61,7 +65,6 @@ class TrainerWT(pl.LightningModule):
         print("Training...")
 
         if resume:
-            ckpt_dir = root / "lightning_logs/*/checkpoints"
             resume_ckpt = find_latest_checkpoints(ckpt_dir)
         else:
             resume_ckpt = None
@@ -97,6 +100,37 @@ if __name__ == "__main__":
         device="cuda" if torch.cuda.is_available() else "cpu",
     )
     trainerWT.train(resume=True)
-    trainerWT.save_model(comment="-ess-yeojohnson-beta001-vanillaVAE")
+    comment = "-ess-yeojohnson-beta001-vanillaVAE"
+    trainerWT.save_model(comment=comment)
     # trainerWT.test()
+
+    featureExatractorInit = FeatureExatractorInit(
+        ckpt_path= find_latest_checkpoints(ckpt_dir)
+        )
+
+    resume_version = find_latest_versions(pllog_dir)
+
+    mode = "latent"
+    featureExatractorInit.plot_condition_results(
+        mode=mode, # latent or cond
+        dm_num=15,
+        resolution_num=100,
+        bias=1,
+        save_name= resume_version / comment + "-" + mode,
+        )
+
+    mode = "cond"
+    featureExatractorInit.plot_condition_results(
+        mode="cond", # latent or cond
+        dm_num=15,
+        resolution_num=100,
+        bias=1,
+        save_name= resume_version / comment ,
+        )
+
+    visualize = Visualize(find_latest_checkpoints(ckpt_dir))
+    visualize.plot_gridspectrum(eval=True,latent_op=None,show=False,save_path=resume_version / comment)
+    visualize.plot_gridwaveform(eval=True,latent_op=None,show=False,save_path=resume_version / comment)
+
+    # TODO 回してみて上手くいったら整理する
     print("Done!")

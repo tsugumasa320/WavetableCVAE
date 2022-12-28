@@ -400,6 +400,7 @@ def yeojonson_for_WT(list, label_name: str, sett):
         raise Exception("Error!")
     return list
 
+
 if __name__ == "__main__":
     featureExatractorInit = FeatureExatractorInit(
         ckpt_path="2022-12-27-12:32:17.145396-LitAutoEncoder-10000epoch-ess-yeojohnson-beta001-conditionCh1-EncOutDecIn.ckpt"
