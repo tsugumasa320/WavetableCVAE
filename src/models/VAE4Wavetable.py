@@ -53,7 +53,7 @@ class LitAutoEncoder(pl.LightningModule):
 
         self.decoder = nn.Sequential(
             Submodule.UpSampling(
-                in_channels=128 + 9, out_channels=64, kernel_size=8, stride=2
+                in_channels=128, out_channels=64, kernel_size=8, stride=2
             ),
             Submodule.ResBlock(64, 3),
             Submodule.UpSampling(
@@ -74,17 +74,17 @@ class LitAutoEncoder(pl.LightningModule):
         # self.hidden2mu = nn.Linear(embed_dim,embed_dim)
         # self.hidden2log_var = nn.Linear(embed_dim,embed_dim)
         self.hidden2mu = nn.Conv1d(
-            in_channels=512 + 9, out_channels=128, kernel_size=1, stride=1, padding=0
+            in_channels=512, out_channels=128, kernel_size=1, stride=1, padding=0
         )
         self.hidden2log_var = nn.Conv1d(
-            in_channels=512 + 9, out_channels=128, kernel_size=1, stride=1, padding=0
+            in_channels=512, out_channels=128, kernel_size=1, stride=1, padding=0
         )
 
         self.beta = beta
         self.loudness = Submodule.Loudness(44100, 3600)
         self.distance = Submodule.Distance(scales=[3600], overlap=0)
 
-        """
+
         self.spectroCentroidZ = []
         self.spectroSpreadZ = []
         self.spectroKurtosisZ = []
@@ -93,7 +93,7 @@ class LitAutoEncoder(pl.LightningModule):
         self.pitchSalienceZ = []
         self.HnrZ = []
         self._latentdimAttributesCalc()
-        """
+
 
     def forward(
         self, x: torch.Tensor, attrs: dict, latent_op: dict = None
@@ -104,12 +104,12 @@ class LitAutoEncoder(pl.LightningModule):
         # x = self._conditioning(x, attrs,size=1)
         mu, log_var = self.encode(x, attrs)
         hidden = self._reparametrize(mu, log_var)
-        """
+
         if latent_op is not None:
             hidden = self._latentdimControler(hidden, latent_op)
-        """
 
-        hidden = self._conditioning(hidden, attrs, size=1)
+
+        #hidden = self._conditioning(hidden, attrs, size=1)
         output = self.decode(hidden)  # torch.tensor(np.hanning(600)).to(device)
         return mu, log_var, output
 
@@ -149,62 +149,65 @@ class LitAutoEncoder(pl.LightningModule):
         HnrLowSum = torch.zeros(1, 128, 140).to(device)
 
         for i in range(len(dataset)):
-            x, attrs = dataset[i]
-            mu, log_var = self.encode(x.unsqueeze(0))
-            hidden = self._reparametrize(mu, log_var).to(device)
 
-            Centroid = torch.tensor(attrs["SpectralCentroid"]).to(device)
-            CentroidHigh += hidden * Centroid
-            CentroidHighSum += Centroid
+            # no gradient calculation
+            with torch.no_grad():
+                x, attrs = dataset[i]
+                mu, log_var = self.encode(x.unsqueeze(0),attrs)
+                hidden = self._reparametrize(mu, log_var).to(device)
 
-            CentroidLow += hidden * (1 - Centroid)
-            CentroidLowSum += 1 - Centroid
+                Centroid = torch.tensor(attrs["SpectralCentroid"]).to(device)
+                CentroidHigh += hidden * Centroid
+                CentroidHighSum += Centroid
 
-            Spread = torch.tensor(attrs["SpectralSpread"]).to(device)
-            SpreadHigh += hidden * Spread
-            SpreadHighSum += Spread
+                CentroidLow += hidden * (1 - Centroid)
+                CentroidLowSum += 1 - Centroid
 
-            SpreadLow += hidden * (1 - Spread)
-            SpreadLowSum += 1 - Spread
+                Spread = torch.tensor(attrs["SpectralSpread"]).to(device)
+                SpreadHigh += hidden * Spread
+                SpreadHighSum += Spread
 
-            Kurtosis = torch.tensor(attrs["SpectralKurtosis"]).to(device)
-            KurtosisHigh += hidden * Kurtosis
-            KurtosisHighSum += Kurtosis
+                SpreadLow += hidden * (1 - Spread)
+                SpreadLowSum += 1 - Spread
 
-            KurtosisLow += hidden * (1 - Kurtosis)
-            KurtosisLowSum += 1 - Kurtosis
+                Kurtosis = torch.tensor(attrs["SpectralKurtosis"]).to(device)
+                KurtosisHigh += hidden * Kurtosis
+                KurtosisHighSum += Kurtosis
 
-            ZeroCrossingRate = torch.tensor(attrs["ZeroCrossingRate"]).to(device)
-            ZeroCrossingRateHigh += hidden * ZeroCrossingRate
-            ZeroCrossingRateHighSum += ZeroCrossingRate
+                KurtosisLow += hidden * (1 - Kurtosis)
+                KurtosisLowSum += 1 - Kurtosis
 
-            ZeroCrossingRateLow += hidden * (1 - ZeroCrossingRate)
-            ZeroCrossingRateLowSum += 1 - ZeroCrossingRate
+                ZeroCrossingRate = torch.tensor(attrs["ZeroCrossingRate"]).to(device)
+                ZeroCrossingRateHigh += hidden * ZeroCrossingRate
+                ZeroCrossingRateHighSum += ZeroCrossingRate
 
-            oddToEvenHarmonicEnergyRatio = torch.tensor(
-                attrs["OddToEvenHarmonicEnergyRatio"]
-            ).to(device)
-            oddToEvenHarmonicEnergyRatioHigh += hidden * oddToEvenHarmonicEnergyRatio
-            oddToEvenHarmonicEnergyRatioHighSum += oddToEvenHarmonicEnergyRatio
+                ZeroCrossingRateLow += hidden * (1 - ZeroCrossingRate)
+                ZeroCrossingRateLowSum += 1 - ZeroCrossingRate
 
-            oddToEvenHarmonicEnergyRatioLow += hidden * (
-                1 - oddToEvenHarmonicEnergyRatio
-            )
-            oddToEvenHarmonicEnergyRatioLowSum += 1 - oddToEvenHarmonicEnergyRatio
+                oddToEvenHarmonicEnergyRatio = torch.tensor(
+                    attrs["OddToEvenHarmonicEnergyRatio"]
+                ).to(device)
+                oddToEvenHarmonicEnergyRatioHigh += hidden * oddToEvenHarmonicEnergyRatio
+                oddToEvenHarmonicEnergyRatioHighSum += oddToEvenHarmonicEnergyRatio
 
-            pitchSalience = torch.tensor(attrs["PitchSalience"]).to(device)
-            pitchSalienceHigh += hidden * pitchSalience
-            pitchSalienceHighSum += pitchSalience
+                oddToEvenHarmonicEnergyRatioLow += hidden * (
+                    1 - oddToEvenHarmonicEnergyRatio
+                )
+                oddToEvenHarmonicEnergyRatioLowSum += 1 - oddToEvenHarmonicEnergyRatio
 
-            pitchSalienceLow += hidden * (1 - pitchSalience)
-            pitchSalienceLowSum += 1 - pitchSalience
+                pitchSalience = torch.tensor(attrs["PitchSalience"]).to(device)
+                pitchSalienceHigh += hidden * pitchSalience
+                pitchSalienceHighSum += pitchSalience
 
-            Hnr = torch.tensor(attrs["HNR"]).to(device)
-            HnrHigh += hidden * Hnr
-            HnrHighSum += Hnr
+                pitchSalienceLow += hidden * (1 - pitchSalience)
+                pitchSalienceLowSum += 1 - pitchSalience
 
-            HnrLow += hidden * (1 - Hnr)
-            HnrLowSum += 1 - Hnr
+                Hnr = torch.tensor(attrs["HNR"]).to(device)
+                HnrHigh += hidden * Hnr
+                HnrHighSum += Hnr
+
+                HnrLow += hidden * (1 - Hnr)
+                HnrLowSum += 1 - Hnr
 
         self.spectroCentroidZ = (
             CentroidHigh / CentroidHighSum - CentroidLow / CentroidLowSum
@@ -268,7 +271,7 @@ class LitAutoEncoder(pl.LightningModule):
 
     def encode(self, x: torch.Tensor, attrs: dict) -> Tuple[torch.Tensor, torch.Tensor]:
         hidden = self.encoder(x)
-        hidden = self._conditioning(hidden, attrs, size=1)
+        #hidden = self._conditioning(hidden, attrs, size=1)
         mu = self.hidden2mu(hidden)
         log_var = self.hidden2log_var(hidden)
         return mu, log_var
