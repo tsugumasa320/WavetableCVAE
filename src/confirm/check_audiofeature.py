@@ -403,10 +403,12 @@ def yeojonson_for_WT(list, label_name: str, sett):
 
 if __name__ == "__main__":
     featureExatractorInit = FeatureExatractorInit(
-        ckpt_path="2022-12-27-12:32:17.145396-LitAutoEncoder-10000epoch-ess-yeojohnson-beta001-conditionCh1-EncOutDecIn.ckpt"
+        ckpt_path=
+        # "2022-12-27-12:32:17.145396-LitAutoEncoder-10000epoch-ess-yeojohnson-beta001-conditionCh1-EncOutDecIn.ckpt"
+        "2022-12-29-12:57:30.118964-LitAutoEncoder-10000epoch-ess-yeojohnson-beta001-vanillaVAE.ckpt"
         )
     featureExatractorInit.plot_condition_results(
-        mode="cond", # latent or cond
+        mode="latent", # latent or cond
         dm_num=15,
         resolution_num=100,
         bias=1,
