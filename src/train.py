@@ -1,15 +1,17 @@
-import torch
-import pytorch_lightning as pl
-
-from utils import torch_fix_seed, model_save
-from dataio.DataModule import AWKDDataModule
-from models.VAE4Wavetable import LitAutoEncoder
-from models.components.Callbacks import MyPrintingCallback
-from tools.Find_latest_checkpoints import *
-from confirm.check_audiofeature import FeatureExatractorInit
-from confirm.check_Imgaudio import *
-
 import pyrootutils
+import pytorch_lightning as pl
+import torch
+
+from dataio.akwd_datamodule import AWKDDataModule
+from models.components.callback import MyPrintingCallback
+from models.VAE4Wavetable import LitAutoEncoder
+from models.cvae import LitCVAE
+from tools.find_latest import find_latest_checkpoints, find_latest_versions
+from utils import model_save, torch_fix_seed
+
+# from confirm.check_audiofeature import FeatureExatractorInit
+# from confirm.check_Imgaudio import *
+
 
 root = pyrootutils.setup_root(
     search_from=__file__,
@@ -45,6 +47,9 @@ class TrainerWT(pl.LightningModule):
         elif device == "cpu":
             accelerator = "cpu"
             devices = None
+        elif device == "mps":
+            accelerator = "mps"
+            devices = 1
         else:
             raise ValueError("device must be 'cuda' or 'cpu'")
 
@@ -52,7 +57,7 @@ class TrainerWT(pl.LightningModule):
         self.trainer = pl.Trainer(
             max_epochs=epoch,
             enable_checkpointing=True,
-            #log_every_n_steps=1,
+            # log_every_n_steps=1,
             callbacks=[MyPrintingCallback()],
             auto_lr_find=True,
             auto_scale_batch_size=True,
@@ -73,7 +78,7 @@ class TrainerWT(pl.LightningModule):
 
     def save_model(self, comment=""):
         save_path = root / "torchscript"
-        print("save_model!",save_path)
+        print("save_model!", save_path)
         model_save(
             self.model,
             self.trainer,
@@ -92,18 +97,19 @@ class TrainerWT(pl.LightningModule):
 
 if __name__ == "__main__":
     trainerWT = TrainerWT(
-        model=LitAutoEncoder(sample_points=600, beta=0.01),
-        epoch=10000,
+        model=LitCVAE(sample_points=600, beta=0.01),
+        epoch=1,
         batch_size=32,
         data_dir=data_dir,
         seed=42,
         device="cuda" if torch.cuda.is_available() else "cpu",
     )
-    trainerWT.train(resume=True)
+    trainerWT.train(resume=False)
     comment = "-ess-yeojohnson-beta001-vanillaVAE"
     trainerWT.save_model(comment=comment)
     # trainerWT.test()
 
+    """
     featureExatractorInit = FeatureExatractorInit(
         ckpt_path= find_latest_checkpoints(ckpt_dir)
         )
@@ -131,6 +137,7 @@ if __name__ == "__main__":
     visualize = Visualize(find_latest_checkpoints(ckpt_dir))
     visualize.plot_gridspectrum(eval=True,latent_op=None,show=False,save_path=resume_version / comment)
     visualize.plot_gridwaveform(eval=True,latent_op=None,show=False,save_path=resume_version / comment)
+    """
 
     # TODO 回してみて上手くいったら整理する
     print("Done!")

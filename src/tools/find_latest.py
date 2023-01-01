@@ -1,5 +1,6 @@
-from pathlib import Path
 import glob
+from pathlib import Path
+
 import pyrootutils
 
 root = pyrootutils.setup_root(
@@ -17,13 +18,13 @@ def find_latest_checkpoints(ckpt_dir: Path):
     else:
         return ckpts[-1]  # ,ckpts
 
+
 def find_latest_versions(dir: Path):
     ckpts = sorted(glob.glob(str(Path(dir / "version_*"))))
     if len(ckpts) == 0:
         return None
     else:
         return ckpts[-1]  # ,ckpts
-
 
 
 if __name__ == "__main__":

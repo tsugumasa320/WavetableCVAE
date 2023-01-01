@@ -1,4 +1,5 @@
 import pyrootutils
+
 root = pyrootutils.setup_root(
     search_from=__file__,
     indicator=["README.md", "LICENSE", ".git"],
@@ -10,20 +11,19 @@ root = pyrootutils.setup_root(
 data_dir = root / "data/AKWF_44k1_600s"
 output_dir = root / "output"
 
+import os
+import statistics
+
+import essentia.standard as ess
+import matplotlib.pyplot as plt
+import numpy as np
+import Signal_Analysis.features.signal as signal
 import torch
 import torchaudio
-import statistics
-import Signal_Analysis.features.signal as signal
-import essentia.standard as ess
-import os
-import matplotlib.pyplot as plt
 from scipy import stats
-import statistics
-import numpy as np
 from tqdm import tqdm
-from src.confirm.check_Imgaudio import EvalModelInit
 
-
+from src.check_scripts.check_Imgaudio import EvalModelInit
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -55,7 +55,7 @@ class FeatureExatractorInit(EvalModelInit):
         ess_spec = self.ess_spectrum(ess_audio)
 
         # 保存したファイルを削除する
-        os.remove('tmp.wav')
+        os.remove("tmp.wav")
 
         c = self.centroid(ess_spec)
         sp, _, k = self.distributionShape(self.centralMoments(ess_spec))
@@ -134,10 +134,10 @@ class FeatureExatractorInit(EvalModelInit):
 
         return cond_label, est_label
 
-    def ConditionLabelEvalPlt(self,label1,label2,label_name:str):
-        #折れ線グラフ表示
-        p1 = plt.plot(label1,linewidth=2)
-        p2 = plt.plot(label2,linewidth=2) #linestyle="dashed")
+    def ConditionLabelEvalPlt(self, label1, label2, label_name: str):
+        # 折れ線グラフ表示
+        p1 = plt.plot(label1, linewidth=2)
+        p2 = plt.plot(label2, linewidth=2)  # linestyle="dashed")
 
         plt.title(label_name)
         plt.xlabel("x axis")
@@ -169,18 +169,18 @@ class FeatureExatractorInit(EvalModelInit):
         elif label_name == "HNR":
             est_data = h
         else:
-            raise Exception('Error!')
+            raise Exception("Error!")
 
         return est_data
 
     def plot_condition_results(
         self,
         mode="cond",
-        dm_num:int=15,
-        resolution_num:int = 10,
-        bias: int=1,
-        save_name:str = "test"
-        ):
+        dm_num: int = 15,
+        resolution_num: int = 10,
+        bias: int = 1,
+        save_name: str = "test",
+    ):
 
         attrs_label = [
             "SpectralCentroid",
@@ -192,8 +192,10 @@ class FeatureExatractorInit(EvalModelInit):
             "HNR",
         ]
 
-        fig, axes = plt.subplots(dm_num, len(attrs_label)+2,figsize=(30,3*dm_num),tight_layout=True)
-        x = np.array(range(resolution_num+1)) / resolution_num
+        fig, axes = plt.subplots(
+            dm_num, len(attrs_label) + 2, figsize=(30, 3 * dm_num), tight_layout=True
+        )
+        x = np.array(range(resolution_num + 1)) / resolution_num
 
         CentroidMAE = 0
         SpreadMAE = 0
@@ -226,7 +228,7 @@ class FeatureExatractorInit(EvalModelInit):
                         resolution_num=resolution_num,
                         bias=bias,
                         mode=mode,
-                        )
+                    )
 
                     axes[j, i].set_title(attrs_label[i - 2])
                     axes[j, i].grid(True)
@@ -334,7 +336,7 @@ def Normalize(list, normalize_method: str, label_name):
         }
         list = min_max_for_WT(list, label_name, settings)
     else:
-        raise Exception('Error!')
+        raise Exception("Error!")
 
     return list
 
@@ -403,14 +405,14 @@ def yeojonson_for_WT(list, label_name: str, sett):
 
 if __name__ == "__main__":
     featureExatractorInit = FeatureExatractorInit(
-        ckpt_path=
+        ckpt_path =
         # "2022-12-27-12:32:17.145396-LitAutoEncoder-10000epoch-ess-yeojohnson-beta001-conditionCh1-EncOutDecIn.ckpt"
         "2022-12-29-12:57:30.118964-LitAutoEncoder-10000epoch-ess-yeojohnson-beta001-vanillaVAE.ckpt"
-        )
+    )
     featureExatractorInit.plot_condition_results(
-        mode="latent", # latent or cond
+        mode="latent",  # latent or cond
         dm_num=15,
         resolution_num=100,
         bias=1,
-        save_name="test.png"
-        )
+        save_name="test.png",
+    )

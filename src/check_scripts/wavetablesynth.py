@@ -1,10 +1,12 @@
 import math
 from math import tau
-import torch
+
 import numpy as np
-import soundfile as sf
-from src.confirm.check_Imgaudio import EvalModelInit
 import pyrootutils
+import soundfile as sf
+import torch
+
+from src.check_scripts.check_Imgaudio import EvalModelInit
 
 root = pyrootutils.setup_root(
     search_from=__file__,

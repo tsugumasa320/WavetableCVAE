@@ -1,10 +1,10 @@
-import torch
-import torch.nn.functional
-import numpy as np
 import librosa
 import matplotlib.pyplot as plt
-from IPython.display import Audio, display
+import numpy as np
 import pyrootutils
+import torch
+import torch.nn.functional
+from IPython.display import Audio, display
 
 root = pyrootutils.setup_root(
     search_from=__file__,

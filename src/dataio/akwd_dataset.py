@@ -1,14 +1,17 @@
 import json
-import shutil  # zip解凍用
 import os
+import platform
+import shutil  # zip解凍用
+from pathlib import Path
+from typing import Any, Tuple  # Callable, Dict, List, Optional
+
 import gdown
 import torch
 import torchaudio
-from typing import Any, Tuple  # Callable, Dict, List, Optional
-from pathlib import Path
-import platform
+
 if platform.system() == "Linux":
-    import essentia, essentia.standard as ess
+    import essentia
+    import essentia.standard as ess
 
 
 # 参考 : https://github.com/morris-frank/nsynth-pytorch/blob/master/nsynth/data.py

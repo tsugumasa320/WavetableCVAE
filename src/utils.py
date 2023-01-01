@@ -1,7 +1,8 @@
+import datetime
 import random
+
 import numpy as np
 import torch
-import datetime
 
 
 def torch_fix_seed(seed=42):

@@ -1,7 +1,8 @@
-from torch.utils.data import Dataset  # DataLoader,
-from src.dataio import Dataset
 import matplotlib.pyplot as plt
 import pyrootutils
+# from torch.utils.data import dataset  # DataLoader,
+
+from src.dataio import akwd_dataset
 
 root = pyrootutils.setup_root(
     search_from=__file__,
@@ -40,7 +41,7 @@ def labelCheck() -> None:
     pitchSali = []
     Hnr = []
 
-    dataset = Dataset.AKWDDataset(root=data_dir)
+    dataset = akwd_dataset.AKWDDataset(root=data_dir)
 
     for i in range(len(dataset)):
 

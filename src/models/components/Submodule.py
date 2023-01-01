@@ -1,18 +1,18 @@
-import torch
-import torch.nn as nn
 import librosa
 import numpy as np
+import torch
+import torch.nn as nn
 
 
 class Conditioning(nn.Module):
-    def __init__(self,attrs: dict, size: int = 1):
+    def __init__(self, attrs: dict, size: int = 1):
         super().__init__()
         self.attrs = attrs
         self.size = size
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
 
-        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         with torch.no_grad():
             # model.loadした時にエラーが出る
@@ -35,7 +35,9 @@ class Conditioning(nn.Module):
             PitchSalience = torch.tensor(self.attrs["PitchSalience"])
             Hnr = torch.tensor(self.attrs["HNR"])
 
-            y = torch.ones([x.shape[0], self.size, x.shape[2]]).permute(2, 1, 0)  # [600,1,32] or [140,256,32]
+            y = torch.ones([x.shape[0], self.size, x.shape[2]]).permute(
+                2, 1, 0
+            )  # [600,1,32] or [140,256,32]
             # bright_y = y.to(device) * bright.to(device) # [D,C,B]*[B]
             # rough_y = y.to(device) * rough.to(device)
             # depth_y = y.to(device) * depth.to(device)
@@ -61,7 +63,9 @@ class Conditioning(nn.Module):
             x = torch.cat([x, Complex_y.permute(2, 1, 0)], dim=1).to(torch.float32)
             x = torch.cat([x, OddEven_y.permute(2, 1, 0)], dim=1).to(torch.float32)
             x = torch.cat([x, Dissonance_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-            x = torch.cat([x, PitchSalience_y.permute(2, 1, 0)], dim=1).to(torch.float32)
+            x = torch.cat([x, PitchSalience_y.permute(2, 1, 0)], dim=1).to(
+                torch.float32
+            )
             x = torch.cat([x, Hnr_y.permute(2, 1, 0)], dim=1).to(torch.float32)
 
         return x

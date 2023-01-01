@@ -13,32 +13,23 @@ output_dir = root / "output"
 
 
 from pathlib import Path
-from src.dataio import Dataset  # ,DataLoader  # 追加
-from src.dataio import DataModule
-from src.models import VAE4Wavetable
 
+import matplotlib.pyplot as plt
 import torch
 import torchaudio
-import matplotlib.pyplot as plt
 
-root = pyrootutils.setup_root(
-    search_from=__file__,
-    indicator=["README.md", "LICENSE", ".git"],
-    project_root_env_var=True,  # set the PROJECT_ROOT environment variable to root directory
-    dotenv=True,
-    pythonpath=True,  # add root directory to the PYTHONPATH (helps with imports)
-    cwd=True,  # change current working directory to the root directory (helps with filepaths)
-)
-data_dir = root / "data/AKWF_44k1_600s"
-output_dir = root / "output"
+from src.dataio import akwd_dataset  # ,DataLoader  # 追加
+from src.dataio import akwd_datamodule
+from src.models import VAE4Wavetable
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class EvalModelInit:
     def __init__(self, ckpt_path: str):
         read_path = root / "torchscript" / Path(ckpt_path)
-        self.dataset = Dataset.AKWDDataset(root=data_dir)
-        self.dm = DataModule.AWKDDataModule(batch_size=32, data_dir=data_dir)
+        self.dataset = akwd_dataset.AKWDDataset(root=data_dir)
+        self.dm = akwd_datamodule.AWKDDataModule(batch_size=32, data_dir=data_dir)
         self.model = self._read_model(read_path)
 
     def _read_model(self, path: Path):
@@ -263,21 +254,13 @@ if __name__ == "__main__":
     idx = 1
     label_name = "PitchSalience"
 
-    visualize.read_waveform(
-        idx=idx, latent_op=None, eval=False, save=False, show=True
-    )
-    visualize.read_waveform(
-        idx=idx, latent_op=None, eval=True, save=False, show=True
-    )
+    visualize.read_waveform(idx=idx, latent_op=None, eval=False, save=False, show=True)
+    visualize.read_waveform(idx=idx, latent_op=None, eval=True, save=False, show=True)
     latent_op[label_name] = -0.5
     print(latent_op)
-    visualize.read_waveform(
-        idx=idx, latent_op=None, eval=True, save=False, show=True
-    )
+    visualize.read_waveform(idx=idx, latent_op=None, eval=True, save=False, show=True)
     latent_op[label_name] = 1.5
     print(latent_op)
-    visualize.read_waveform(
-        idx=idx, latent_op=None, eval=True, save=False, show=True
-    )
+    visualize.read_waveform(idx=idx, latent_op=None, eval=True, save=False, show=True)
 
     print("done")

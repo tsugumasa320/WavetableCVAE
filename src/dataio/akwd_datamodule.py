@@ -1,4 +1,5 @@
 import pyrootutils
+
 root = pyrootutils.setup_root(
     search_from=__file__,
     indicator=["README.md", "LICENSE", ".git"],
@@ -7,8 +8,8 @@ root = pyrootutils.setup_root(
 )
 import pytorch_lightning as pl
 import torch
-from src.dataio import Dataset
 
+from src.dataio import akwd_dataset
 
 # LightningDataModuleはDataLoaderとなるクラス
 
@@ -17,7 +18,7 @@ class AWKDDataModule(pl.LightningDataModule):
     def __init__(self, batch_size: int, data_dir: str):
         super().__init__()  # 親クラスのinit
 
-        dataset = Dataset.AKWDDataset(root=data_dir)
+        dataset = akwd_dataset.AKWDDataset(root=data_dir)
 
         # ここは外部から与えられる様にするか要検討
         NUM_TRAIN = 3158  # trainの数
@@ -30,7 +31,7 @@ class AWKDDataModule(pl.LightningDataModule):
             dataset, [NUM_TRAIN, NUM_VAL]
         )
 
-        self.test_dataset = Dataset.AKWDDataset(root=data_dir)
+        self.test_dataset = akwd_dataset.AKWDDataset(root=data_dir)
         self.batch_size = batch_size
         self.data_dir = data_dir
 

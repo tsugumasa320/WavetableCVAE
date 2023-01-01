@@ -18,9 +18,9 @@ root = pyrootutils.setup_root(
 data_dir = root / "data"
 
 
-class LitAutoEncoder(pl.LightningModule):
+class LitCVAE(pl.LightningModule):
     def __init__(
-        self, sample_points: int = 600, beta: float = 1, duplicate_num: int = 6
+        self, sample_points: int = 600, beta: float = 1, duplicate_num: int = 6, latent_dim: int = 128
     ):  # Define computations here
         super().__init__()
         assert sample_points == 600
@@ -31,56 +31,9 @@ class LitAutoEncoder(pl.LightningModule):
 
         # self.logging_graph_flg = True
 
-        self.encoder = nn.Sequential(
-            nn.Conv1d(
-                in_channels=1, out_channels=64, kernel_size=9, stride=1, padding=0
-            ),
-            nn.LeakyReLU(),
-            nn.BatchNorm1d(64),
-            nn.Conv1d(
-                in_channels=64, out_channels=128, kernel_size=9, stride=1, padding=0
-            ),
-            nn.LeakyReLU(),
-            nn.BatchNorm1d(128),
-            nn.Conv1d(
-                in_channels=128, out_channels=256, kernel_size=9, stride=2, padding=0
-            ),
-            nn.LeakyReLU(),
-            nn.BatchNorm1d(256),
-            nn.Conv1d(
-                in_channels=256, out_channels=512, kernel_size=9, stride=2, padding=0
-            ),
-            nn.LeakyReLU(),
-        )
+        self.encoder = Encoder(cond=[0, 0, 0, 0], cond_ch=9, latent_dim=128)
 
-        self.decoder = nn.Sequential(
-            submodule.UpSampling(
-                in_channels=128, out_channels=64, kernel_size=8, stride=2
-            ),
-            submodule.ResBlock(64, 3),
-            submodule.UpSampling(
-                in_channels=64, out_channels=32, kernel_size=8, stride=1
-            ),
-            submodule.ResBlock(32, 3),
-            submodule.UpSampling(
-                in_channels=32, out_channels=16, kernel_size=8, stride=2
-            ),
-            submodule.ResBlock(16, 3),
-            submodule.UpSampling(
-                in_channels=16, out_channels=8, kernel_size=9, stride=1
-            ),
-            submodule.ResBlock(8, 3),
-            submodule.ConvOut(in_channels=8, out_channels=1, kernel_size=1, stride=1),
-        )
-
-        # self.hidden2mu = nn.Linear(embed_dim,embed_dim)
-        # self.hidden2log_var = nn.Linear(embed_dim,embed_dim)
-        self.hidden2mu = nn.Conv1d(
-            in_channels=512, out_channels=128, kernel_size=1, stride=1, padding=0
-        )
-        self.hidden2log_var = nn.Conv1d(
-            in_channels=512, out_channels=128, kernel_size=1, stride=1, padding=0
-        )
+        self.decoder = Decoder(cond=[1, 1, 1, 1], cond_ch=9, latent_dim=128)
 
         self.beta = beta
         self.loudness = submodule.Loudness(44100, 3600)
@@ -102,15 +55,13 @@ class LitAutoEncoder(pl.LightningModule):
         torch.Tensor, torch.Tensor, torch.Tensor
     ]:  # Use for inference only (separate from training_step)
 
-        # x = self._conditioning(x, attrs,size=1)
-        mu, log_var = self.encode(x, attrs)
+        mu, log_var = self.encoder(x, attrs)
         hidden = self._reparametrize(mu, log_var)
 
         if latent_op is not None:
             hidden = self._latentdimControler(hidden, latent_op)
 
-        # hidden = self._conditioning(hidden, attrs, size=1)
-        output = self.decode(hidden)  # torch.tensor(np.hanning(600)).to(device)
+        output = self.decoder(hidden, attrs)  # torch.tensor(np.hanning(600)).to(device)
         return mu, log_var, output
 
     def _latentdimAttributesCalc(self):
@@ -140,7 +91,7 @@ class LitAutoEncoder(pl.LightningModule):
             # no gradient calculation
             with torch.no_grad():
                 x, attrs = dataset[i]
-                mu, log_var = self.encode(x.unsqueeze(0), attrs)
+                mu, log_var = self.encoder(x.unsqueeze(0), attrs)
                 hidden = self._reparametrize(mu, log_var).to(device)
 
                 Centroid = torch.tensor(attrs["SpectralCentroid"]).to(device)
@@ -261,23 +212,12 @@ class LitAutoEncoder(pl.LightningModule):
 
         return hidden
 
-    def encode(self, x: torch.Tensor, attrs: dict) -> Tuple[torch.Tensor, torch.Tensor]:
-        hidden = self.encoder(x)
-        # hidden = self._conditioning(hidden, attrs, size=1)
-        mu = self.hidden2mu(hidden)
-        log_var = self.hidden2log_var(hidden)
-        return mu, log_var
-
     def _reparametrize(self, mu: torch.Tensor, log_var: torch.Tensor) -> torch.Tensor:
         # Reparametrization Trick to allow gradients to backpropagate from the
         # stochastic part of the model
         sigma = torch.exp(0.5 * log_var)
         eps = torch.randn_like(sigma)
         return mu + sigma * eps  # z = mu + sigma * epsilon
-
-    def decode(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.decoder(x)
-        return x
 
     def training_step(
         self, attrs: dict, attrs_idx: int
@@ -332,66 +272,6 @@ class LitAutoEncoder(pl.LightningModule):
             f"{stage}_loss", self.loss, on_step=True, on_epoch=False, prog_bar=True
         )
         return self.loss
-
-    def _conditioning(self, x: torch.Tensor, attrs: dict, size: int) -> torch.Tensor:
-
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-        with torch.no_grad():
-            # model.loadした時にエラーが出る
-            # bright = ((attrs["brightness"]/100).clone().detach() # 0~1に正規化
-            # rough = ((attrs["roughness"]/100).clone().detach()
-            # depth = ((attrs["depth"]/100).clone().detach()
-
-            # Warningは出るがエラーは出ないので仮置き
-            # bright = torch.tensor(attrs["brightness"]/100) # 0~1に正規化
-            # rough = torch.tensor(attrs["roughness"]/100)
-            # depth = torch.tensor(attrs["depth"]/100)
-
-            Centroid = torch.tensor(attrs["SpectralCentroid"])
-            Spread = torch.tensor(attrs["SpectralSpread"])
-            Kurtosis = torch.tensor(attrs["SpectralKurtosis"])
-            ZeroX = torch.tensor(attrs["ZeroCrossingRate"])
-            Complex = torch.tensor(attrs["SpectralComplexity"])
-            OddEven = torch.tensor(attrs["OddToEvenHarmonicEnergyRatio"])
-            Dissonance = torch.tensor(attrs["Dissonance"])
-            PitchSalience = torch.tensor(attrs["PitchSalience"])
-            Hnr = torch.tensor(attrs["HNR"])
-
-            y = torch.ones([x.shape[0], size, x.shape[2]]).permute(
-                2, 1, 0
-            )  # [600,1,32] or [140,256,32]
-            # bright_y = y.to(device) * bright.to(device) # [D,C,B]*[B]
-            # rough_y = y.to(device) * rough.to(device)
-            # depth_y = y.to(device) * depth.to(device)
-
-            Centroid_y = y.to(device) * Centroid.to(device)
-            Spread_y = y.to(device) * Spread.to(device)
-            Kurtosis_y = y.to(device) * Kurtosis.to(device)
-            ZeroX_y = y.to(device) * ZeroX.to(device)
-            Complex_y = y.to(device) * Complex.to(device)
-            OddEven_y = y.to(device) * OddEven.to(device)
-            Dissonance_y = y.to(device) * Dissonance.to(device)
-            PitchSalience_y = y.to(device) * PitchSalience.to(device)
-            Hnr_y = y.to(device) * Hnr.to(device)
-
-            x = x.to(device)
-            # x = torch.cat([x, bright_y.permute(2,1,0)], dim=1).to(torch.float32)
-            # x = torch.cat([x, rough_y.permute(2,1,0)], dim=1).to(torch.float32)
-            # x = torch.cat([x, depth_y.permute(2,1,0)], dim=1).to(torch.float32)
-            x = torch.cat([x, Centroid_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-            x = torch.cat([x, Spread_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-            x = torch.cat([x, Kurtosis_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-            x = torch.cat([x, ZeroX_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-            x = torch.cat([x, Complex_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-            x = torch.cat([x, OddEven_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-            x = torch.cat([x, Dissonance_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-            x = torch.cat([x, PitchSalience_y.permute(2, 1, 0)], dim=1).to(
-                torch.float32
-            )
-            x = torch.cat([x, Hnr_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-
-        return x
 
     def _scw2spectrum(self, x: torch.Tensor) -> torch.Tensor:
         # 波形を6つくっつけてSTFTする
@@ -463,3 +343,207 @@ class LitAutoEncoder(pl.LightningModule):
             {},
         )
         # {'hparam/accuracy': 10, 'hparam/loss': 10})
+
+
+class Base(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def _conditioning(self, x: torch.Tensor, attrs: dict) -> torch.Tensor:
+
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+        with torch.no_grad():
+            # model.loadした時にエラーが出る
+            # bright = ((attrs["brightness"]/100).clone().detach() # 0~1に正規化
+            # rough = ((attrs["roughness"]/100).clone().detach()
+            # depth = ((attrs["depth"]/100).clone().detach()
+
+            # Warningは出るがエラーは出ないので仮置き
+            # bright = torch.tensor(attrs["brightness"]/100) # 0~1に正規化
+            # rough = torch.tensor(attrs["roughness"]/100)
+            # depth = torch.tensor(attrs["depth"]/100)
+
+            Centroid = torch.tensor(attrs["SpectralCentroid"])
+            Spread = torch.tensor(attrs["SpectralSpread"])
+            Kurtosis = torch.tensor(attrs["SpectralKurtosis"])
+            ZeroX = torch.tensor(attrs["ZeroCrossingRate"])
+            Complex = torch.tensor(attrs["SpectralComplexity"])
+            OddEven = torch.tensor(attrs["OddToEvenHarmonicEnergyRatio"])
+            Dissonance = torch.tensor(attrs["Dissonance"])
+            PitchSalience = torch.tensor(attrs["PitchSalience"])
+            Hnr = torch.tensor(attrs["HNR"])
+
+            y = torch.ones([x.shape[0], 1, x.shape[2]]).permute(
+                2, 1, 0
+            )  # [600,1,32] or [140,256,32]
+            # bright_y = y.to(device) * bright.to(device) # [D,C,B]*[B]
+            # rough_y = y.to(device) * rough.to(device)
+            # depth_y = y.to(device) * depth.to(device)
+
+            Centroid_y = y.to(device) * Centroid.to(device)
+            Spread_y = y.to(device) * Spread.to(device)
+            Kurtosis_y = y.to(device) * Kurtosis.to(device)
+            ZeroX_y = y.to(device) * ZeroX.to(device)
+            Complex_y = y.to(device) * Complex.to(device)
+            OddEven_y = y.to(device) * OddEven.to(device)
+            Dissonance_y = y.to(device) * Dissonance.to(device)
+            PitchSalience_y = y.to(device) * PitchSalience.to(device)
+            Hnr_y = y.to(device) * Hnr.to(device)
+
+            x = x.to(device)
+            # x = torch.cat([x, bright_y.permute(2,1,0)], dim=1).to(torch.float32)
+            # x = torch.cat([x, rough_y.permute(2,1,0)], dim=1).to(torch.float32)
+            # x = torch.cat([x, depth_y.permute(2,1,0)], dim=1).to(torch.float32)
+            x = torch.cat([x, Centroid_y.permute(2, 1, 0)], dim=1).to(torch.float32)
+            x = torch.cat([x, Spread_y.permute(2, 1, 0)], dim=1).to(torch.float32)
+            x = torch.cat([x, Kurtosis_y.permute(2, 1, 0)], dim=1).to(torch.float32)
+            x = torch.cat([x, ZeroX_y.permute(2, 1, 0)], dim=1).to(torch.float32)
+            x = torch.cat([x, Complex_y.permute(2, 1, 0)], dim=1).to(torch.float32)
+            x = torch.cat([x, OddEven_y.permute(2, 1, 0)], dim=1).to(torch.float32)
+            x = torch.cat([x, Dissonance_y.permute(2, 1, 0)], dim=1).to(torch.float32)
+            x = torch.cat([x, PitchSalience_y.permute(2, 1, 0)], dim=1).to(
+                torch.float32
+            )
+            x = torch.cat([x, Hnr_y.permute(2, 1, 0)], dim=1).to(torch.float32)
+
+        return x
+
+
+class Encoder(Base):
+
+    def __init__(self, cond: list = [0, 0, 0, 0], cond_ch: int = 9, latent_dim: int = 128):
+
+        super().__init__()
+
+        self.cond = cond
+        self.conv0 = nn.Sequential(
+            nn.Conv1d(
+                in_channels=1 + cond_ch if cond[0] is True else 1,
+                out_channels=64, kernel_size=9, stride=1, padding=0
+            ),
+            nn.LeakyReLU(),
+            nn.BatchNorm1d(64),
+        )
+        self.conv1 = nn.Sequential(
+            nn.Conv1d(
+                in_channels=64 + cond_ch if cond[1] is True else 64,
+                out_channels=128, kernel_size=9, stride=1, padding=0
+            ),
+            nn.LeakyReLU(),
+            nn.BatchNorm1d(128),
+        )
+        self.conv2 = nn.Sequential(
+
+            nn.Conv1d(
+                in_channels=128 + cond_ch if cond[2] is True else 128,
+                out_channels=256, kernel_size=9, stride=2, padding=0
+            ),
+            nn.LeakyReLU(),
+            nn.BatchNorm1d(256),
+        )
+        self.conv3 = nn.Sequential(
+            nn.Conv1d(
+                in_channels=256 + cond_ch if cond[3] is True else 256,
+                out_channels=512, kernel_size=9, stride=2, padding=0
+            ),
+            nn.LeakyReLU(),
+            nn.BatchNorm1d(512),
+        )
+
+        self.hidden2mu = nn.Conv1d(
+            in_channels=512, out_channels=latent_dim, kernel_size=1, stride=1, padding=0
+        )
+        self.hidden2log_var = nn.Conv1d(
+            in_channels=512, out_channels=latent_dim, kernel_size=1, stride=1, padding=0
+        )
+
+    def forward(self, x, attrs):
+
+        if self.cond[0] is True:
+            x = self._conditioning(x, attrs)
+        x = self.conv0(x)
+
+        if self.cond[1] is True:
+            x = self._conditioning(x, attrs)
+        x = self.conv1(x)
+
+        if self.cond[2] is True:
+            x = self._conditioning(x, attrs)
+        x = self.conv2(x)
+
+        if self.cond[3] is True:
+            x = self._conditioning(x, attrs)
+        x = self.conv3(x)
+
+        mu = self.hidden2mu(x)
+        log_var = self.hidden2log_var(x)
+
+        return mu, log_var
+
+
+class Decoder(Base):
+
+    def __init__(self, cond: list = [0, 0, 0, 0], cond_ch: int = 9, latent_dim: int = 128):
+
+        super().__init__()
+
+        self.cond = cond
+        self.deconv0 = nn.Sequential(
+            submodule.UpSampling(
+                in_channels=latent_dim + cond_ch if cond[0] is True else latent_dim,
+                out_channels=64, kernel_size=8, stride=2
+            ),
+            submodule.ResBlock(64, 3),
+        )
+
+        self.deconv1 = nn.Sequential(
+            submodule.UpSampling(
+                in_channels=64 + cond_ch if cond[1] is True else 64,
+                out_channels=32, kernel_size=8, stride=1
+            ),
+            submodule.ResBlock(32, 3),
+        )
+
+        self.deconv2 = nn.Sequential(
+            submodule.UpSampling(
+                in_channels=32 + cond_ch if cond[2] is True else 32,
+                out_channels=16, kernel_size=8, stride=2
+            ),
+            submodule.ResBlock(16, 3),
+        )
+
+        self.deconv3 = nn.Sequential(
+            submodule.UpSampling(
+                in_channels=16 + cond_ch if cond[3] is True else 16,
+                out_channels=8, kernel_size=9, stride=1
+            ),
+            submodule.ResBlock(8, 3),
+        )
+
+        self.convout = nn.Sequential(
+            submodule.ConvOut(in_channels=8, out_channels=1, kernel_size=1, stride=1),
+        )
+
+    def forward(self, x, attrs):
+
+        if self.cond[0] is True:
+            x = self._conditioning(x, attrs)
+        x = self.deconv0(x)
+
+        if self.cond[1] is True:
+            x = self._conditioning(x, attrs)
+        x = self.deconv1(x)
+
+        if self.cond[2] is True:
+            x = self._conditioning(x, attrs)
+        x = self.deconv2(x)
+
+        if self.cond[3] is True:
+            x = self._conditioning(x, attrs)
+        x = self.deconv3(x)
+        print(x)
+        print(x.shape)
+        x = self.convout(x)
+
+        return x
