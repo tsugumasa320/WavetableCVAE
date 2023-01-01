@@ -23,7 +23,7 @@ import torchaudio
 from scipy import stats
 from tqdm import tqdm
 
-from src.check_scripts.check_Imgaudio import EvalModelInit
+from src.check.check_Imgaudio import EvalModelInit
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

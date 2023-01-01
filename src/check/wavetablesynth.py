@@ -6,7 +6,7 @@ import pyrootutils
 import soundfile as sf
 import torch
 
-from src.check_scripts.check_Imgaudio import EvalModelInit
+from src.check.check_Imgaudio import EvalModelInit
 
 root = pyrootutils.setup_root(
     search_from=__file__,

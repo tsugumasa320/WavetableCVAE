@@ -224,7 +224,7 @@ class Visualize(EvalModelInit):
             axs[i // ncols, i % ncols].plot(x.squeeze(0).cpu())
 
         if save_path is not None:
-            plt.savefig(save_path + "-gridwave.png")
+            plt.savefig(save_path + "gridwave.png")
         if show is True:
             plt.show()
 

@@ -19,12 +19,18 @@ def torch_fix_seed(seed=42):
 
 def model_save(model, trainer, save_path: str, comment: str) -> None:
 
-    d_today = datetime.date.today()
-    t_now = datetime.datetime.now().time()
-    model_name = model.__class__.__name__
-
-    name = f"{d_today}-{t_now}-{model_name}-{comment}.ckpt"  # 保存ファイル名
-    f = f"{save_path}/{name}"  # 保存先
+    name = get_current_time_filename(model, comment)
+    f = f"{save_path}/{name}.ckpt"  # 保存先
     # torch.save(model, f) # 保存
     trainer.save_checkpoint(f)
     print(f"model saved to {f}")  # 保存先の表示
+
+
+def get_current_time_filename(model, comment: str) -> str:
+
+    d_today = datetime.date.today()
+    t_now = datetime.datetime.now().time()
+    model_name = model.__class__.__name__
+    name = f"{d_today}-{t_now}-{model_name}-{comment}"
+    return name
+
