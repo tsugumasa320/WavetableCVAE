@@ -7,7 +7,7 @@ import torch.nn as nn
 
 from src.dataio import akwd_dataset
 
-from .components import submodule
+from src.models.components import submodule
 
 root = pyrootutils.setup_root(
     search_from=__file__,
@@ -31,9 +31,9 @@ class LitCVAE(pl.LightningModule):
 
         # self.logging_graph_flg = True
 
-        self.encoder = Encoder(cond=[0, 0, 0, 0], cond_ch=9, latent_dim=128)
+        self.encoder = Encoder(cond_layer=[False, False, False, False], cond_ch=9, latent_dim=128)
 
-        self.decoder = Decoder(cond=[1, 1, 1, 1], cond_ch=9, latent_dim=128)
+        self.decoder = Decoder(cond_layer=[True, True, True, True], cond_ch=9, latent_dim=128)
 
         self.beta = beta
         self.loudness = submodule.Loudness(44100, 3600)
@@ -412,14 +412,14 @@ class Base(nn.Module):
 
 class Encoder(Base):
 
-    def __init__(self, cond: list = [0, 0, 0, 0], cond_ch: int = 9, latent_dim: int = 128):
+    def __init__(self, cond_layer: list = [False, False, False, False], cond_ch: int = 9, latent_dim: int = 128):
 
         super().__init__()
 
-        self.cond = cond
+        self.cond_layer = cond_layer
         self.conv0 = nn.Sequential(
             nn.Conv1d(
-                in_channels=1 + cond_ch if cond[0] is True else 1,
+                in_channels=1 + cond_ch if cond_layer[0] is True else 1,
                 out_channels=64, kernel_size=9, stride=1, padding=0
             ),
             nn.LeakyReLU(),
@@ -427,7 +427,7 @@ class Encoder(Base):
         )
         self.conv1 = nn.Sequential(
             nn.Conv1d(
-                in_channels=64 + cond_ch if cond[1] is True else 64,
+                in_channels=64 + cond_ch if cond_layer[1] is True else 64,
                 out_channels=128, kernel_size=9, stride=1, padding=0
             ),
             nn.LeakyReLU(),
@@ -436,7 +436,7 @@ class Encoder(Base):
         self.conv2 = nn.Sequential(
 
             nn.Conv1d(
-                in_channels=128 + cond_ch if cond[2] is True else 128,
+                in_channels=128 + cond_ch if cond_layer[2] is True else 128,
                 out_channels=256, kernel_size=9, stride=2, padding=0
             ),
             nn.LeakyReLU(),
@@ -444,7 +444,7 @@ class Encoder(Base):
         )
         self.conv3 = nn.Sequential(
             nn.Conv1d(
-                in_channels=256 + cond_ch if cond[3] is True else 256,
+                in_channels=256 + cond_ch if cond_layer[3] is True else 256,
                 out_channels=512, kernel_size=9, stride=2, padding=0
             ),
             nn.LeakyReLU(),
@@ -460,19 +460,19 @@ class Encoder(Base):
 
     def forward(self, x, attrs):
 
-        if self.cond[0] is True:
+        if self.cond_layer[0] is True:
             x = self._conditioning(x, attrs)
         x = self.conv0(x)
 
-        if self.cond[1] is True:
+        if self.cond_layer[1] is True:
             x = self._conditioning(x, attrs)
         x = self.conv1(x)
 
-        if self.cond[2] is True:
+        if self.cond_layer[2] is True:
             x = self._conditioning(x, attrs)
         x = self.conv2(x)
 
-        if self.cond[3] is True:
+        if self.cond_layer[3] is True:
             x = self._conditioning(x, attrs)
         x = self.conv3(x)
 
@@ -484,14 +484,14 @@ class Encoder(Base):
 
 class Decoder(Base):
 
-    def __init__(self, cond: list = [0, 0, 0, 0], cond_ch: int = 9, latent_dim: int = 128):
+    def __init__(self, cond_layer: list = [True, True, True, True], cond_ch: int = 9, latent_dim: int = 128):
 
         super().__init__()
 
-        self.cond = cond
+        self.cond_layer = cond_layer
         self.deconv0 = nn.Sequential(
             submodule.UpSampling(
-                in_channels=latent_dim + cond_ch if cond[0] is True else latent_dim,
+                in_channels=latent_dim + cond_ch if cond_layer[0] is True else latent_dim,
                 out_channels=64, kernel_size=8, stride=2
             ),
             submodule.ResBlock(64, 3),
@@ -499,7 +499,7 @@ class Decoder(Base):
 
         self.deconv1 = nn.Sequential(
             submodule.UpSampling(
-                in_channels=64 + cond_ch if cond[1] is True else 64,
+                in_channels=64 + cond_ch if cond_layer[1] is True else 64,
                 out_channels=32, kernel_size=8, stride=1
             ),
             submodule.ResBlock(32, 3),
@@ -507,7 +507,7 @@ class Decoder(Base):
 
         self.deconv2 = nn.Sequential(
             submodule.UpSampling(
-                in_channels=32 + cond_ch if cond[2] is True else 32,
+                in_channels=32 + cond_ch if cond_layer[2] is True else 32,
                 out_channels=16, kernel_size=8, stride=2
             ),
             submodule.ResBlock(16, 3),
@@ -515,7 +515,7 @@ class Decoder(Base):
 
         self.deconv3 = nn.Sequential(
             submodule.UpSampling(
-                in_channels=16 + cond_ch if cond[3] is True else 16,
+                in_channels=16 + cond_ch if cond_layer[3] is True else 16,
                 out_channels=8, kernel_size=9, stride=1
             ),
             submodule.ResBlock(8, 3),
@@ -527,23 +527,21 @@ class Decoder(Base):
 
     def forward(self, x, attrs):
 
-        if self.cond[0] is True:
+        if self.cond_layer[0] is True:
             x = self._conditioning(x, attrs)
         x = self.deconv0(x)
 
-        if self.cond[1] is True:
+        if self.cond_layer[1] is True:
             x = self._conditioning(x, attrs)
         x = self.deconv1(x)
 
-        if self.cond[2] is True:
+        if self.cond_layer[2] is True:
             x = self._conditioning(x, attrs)
         x = self.deconv2(x)
 
-        if self.cond[3] is True:
+        if self.cond_layer[3] is True:
             x = self._conditioning(x, attrs)
         x = self.deconv3(x)
-        print(x)
-        print(x.shape)
         x = self.convout(x)
 
         return x
