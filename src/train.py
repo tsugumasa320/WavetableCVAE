@@ -4,7 +4,7 @@ import torch
 
 from dataio.akwd_datamodule import AWKDDataModule
 from models.components.callback import MyPrintingCallback
-from models.VAE4Wavetable import LitAutoEncoder
+# from models.VAE4Wavetable import LitAutoEncoder
 from models.cvae import LitCVAE
 from tools.find_latest import find_latest_checkpoints, find_latest_versions
 from utils import model_save, torch_fix_seed
@@ -99,14 +99,14 @@ class TrainerWT(pl.LightningModule):
 if __name__ == "__main__":
     trainerWT = TrainerWT(
         model=LitCVAE(sample_points=600, beta=0.01),
-        epoch=1,
+        epoch=10000,
         batch_size=32,
         data_dir=data_dir,
         seed=42,
         device="cuda" if torch.cuda.is_available() else "cpu",
     )
     trainerWT.train(resume=False)
-    comment = "-ess-yeojohnson-beta001-vanillaVAE"
+    comment = "-ess-yeojohnson-beta001-dec1111"
     trainerWT.save_model(comment=comment)
     # trainerWT.test()
 
