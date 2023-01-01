@@ -12,9 +12,12 @@ lightning_logs/
 .wav
 .json
 *.a
+*.zip
 *.app
 build/
-data/
+AKWF_44k1_600s/
+AKWF_16k_80s/
+
 *.out
 nohup.out
 
