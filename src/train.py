@@ -121,16 +121,16 @@ def main(cfg: DictConfig) -> None:
     mlflow.set_experiment(cfg.experiment_name)
 
     # 学習したモデルのパラメータ
-    out_model_fn = './'
-    print("out_model_fn : ", out_model_fn)
-    # if not os.path.exists(out_model_fn):
-    #     os.makedirs(out_model_fn)
+    out_model_fn = './model/%s' % (cfg.savename)
+    if not os.path.exists(out_model_fn):
+        os.makedirs(out_model_fn)
 
     trainerWT = TrainerWT(
         model=LitCVAE(sample_points=cfg.model.sample_points, beta=cfg.model.beta),
         epoch=cfg.train.epoch,
         batch_size=cfg.train.batch_size,
         data_dir=data_dir,
+        # logger=MLFlowLogger(experiment_name=cfg.experiment_name, tracking_uri=tracking_uri),
         seed=cfg.seed,
     )
 
@@ -143,7 +143,7 @@ def main(cfg: DictConfig) -> None:
     # パラメータのロギング
     mlf_logger.log_hyperparams(cfg)
     # モデルの保存
-    # mlf_logger.experiment.log_artifact(mlf_logger.run_id, out_model_fn)
+    mlf_logger.experiment.log_artifact(mlf_logger.run_id, out_model_fn)
 
     # trainerWT.test()
 
