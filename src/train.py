@@ -1,14 +1,22 @@
+import os
+
+import hydra
+import mlflow
 import pyrootutils
 import pytorch_lightning as pl
 import torch
+from hydra import compose, initialize
+from omegaconf import DictConfig
+from pytorch_lightning.loggers import MLFlowLogger , TensorBoardLogger
 
+
+from check.check_Imgaudio import EvalModelInit, Visualize
 from dataio.akwd_datamodule import AWKDDataModule
 from models.components.callback import MyPrintingCallback
 # from models.VAE4Wavetable import LitAutoEncoder
 from models.cvae import LitCVAE
 from tools.find_latest import find_latest_checkpoints, find_latest_versions
 from utils import model_save, torch_fix_seed
-from check.check_Imgaudio import EvalModelInit , Visualize
 
 # from confirm.check_audiofeature import FeatureExatractorInit
 # from confirm.check_Imgaudio import *
@@ -28,14 +36,15 @@ pllog_dir = root / "lightning_logs"
 class TrainerWT(pl.LightningModule):
     def __init__(
         self,
-        model,
+        model: pl.LightningModule,
         epoch: int,
         batch_size: int,
-        data_dir: str,
+        logger: pl.loggers = TensorBoardLogger(save_dir=pllog_dir, name="WaveTableVAE"),
+        data_dir: str = data_dir,
         seed: int = 42,
-        device: str = "cuda",
     ):
         super().__init__()
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         self.epoch = epoch
         self.dm = AWKDDataModule(batch_size=batch_size, data_dir=data_dir)
         self.model = model.to(device)
@@ -57,6 +66,7 @@ class TrainerWT(pl.LightningModule):
         # Trainer
         self.trainer = pl.Trainer(
             max_epochs=epoch,
+            deterministic=True,
             enable_checkpointing=True,
             # log_every_n_steps=1,
             callbacks=[MyPrintingCallback()],
@@ -64,6 +74,7 @@ class TrainerWT(pl.LightningModule):
             auto_scale_batch_size=True,
             accelerator=accelerator,
             devices=devices,
+            logger=logger,
         )
 
     def train(self, resume: bool = False):
@@ -79,7 +90,6 @@ class TrainerWT(pl.LightningModule):
 
     def save_model(self, comment=""):
         save_path = root / "torchscript"
-        print("save_model!", save_path)
         model_save(
             self.model,
             self.trainer,
@@ -96,19 +106,51 @@ class TrainerWT(pl.LightningModule):
         self.model.train()
 
 
-if __name__ == "__main__":
+@hydra.main(config_path="../conf", config_name="config")
+def main(cfg: DictConfig) -> None:
+
+    # トラッキングを行う場所をチェックし，ログを収納するディレクトリを指定
+    print(hydra.utils.get_original_cwd())
+    dir = hydra.utils.get_original_cwd() + "/mlruns"
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+    # mlflowの準備
+    mlflow.set_tracking_uri(dir)
+    tracking_uri = mlflow.get_tracking_uri()
+    mlflow.set_experiment(cfg.experiment_name)
+
+    # 学習したモデルのパラメータ
+    out_model_fn = './'
+    print("out_model_fn : ", out_model_fn)
+    # if not os.path.exists(out_model_fn):
+    #     os.makedirs(out_model_fn)
+
     trainerWT = TrainerWT(
-        model=LitCVAE(sample_points=600, beta=0.01),
-        epoch=10000,
-        batch_size=32,
+        model=LitCVAE(sample_points=cfg.model.sample_points, beta=cfg.model.beta),
+        epoch=cfg.train.epoch,
+        batch_size=cfg.train.batch_size,
         data_dir=data_dir,
-        seed=42,
-        device="cuda" if torch.cuda.is_available() else "cpu",
+        seed=cfg.seed,
     )
-    trainerWT.train(resume=False)
-    comment = "-ess-yeojohnson-beta001-dec1111"
-    trainerWT.save_model(comment=comment)
+
+    # 学習
+    mlf_logger = MLFlowLogger(experiment_name=cfg.experiment_name, tracking_uri=tracking_uri)
+    trainerWT.train(resume=cfg.train.resume)
+    if cfg.save:
+        trainerWT.save_model(comment=cfg.save)
+
+    # パラメータのロギング
+    mlf_logger.log_hyperparams(cfg)
+    # モデルの保存
+    # mlf_logger.experiment.log_artifact(mlf_logger.run_id, out_model_fn)
+
     # trainerWT.test()
+
+
+if __name__ == "__main__":
+
+    main()
 
     # visualize = Visualize(find_latest_checkpoints(ckpt_dir))
     # visualize.plot_gridspectrum(eval=True, latent_op=None, show=True, save_path=None)
@@ -142,6 +184,3 @@ if __name__ == "__main__":
     visualize.plot_gridspectrum(eval=True,latent_op=None,show=False,save_path=resume_version / comment)
     visualize.plot_gridwaveform(eval=True,latent_op=None,show=False,save_path=resume_version / comment)
     """
-
-    # TODO 回してみて上手くいったら整理する
-    print("Done!")

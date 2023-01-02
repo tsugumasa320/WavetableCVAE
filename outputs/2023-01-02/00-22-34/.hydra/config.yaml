@@ -1,0 +1,11 @@
+train:
+  epoch: 1
+  batch_size: 32
+  resume: false
+  comment: -ess-yeojohnson-beta001-dec1111
+  auto_lr_find: true
+  auto_scale_batch_size: true
+model:
+  sample_points: 600
+  beta: 0.01
+seed: 42
