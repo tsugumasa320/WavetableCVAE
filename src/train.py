@@ -109,22 +109,6 @@ class TrainerWT(pl.LightningModule):
 @hydra.main(config_path="../conf", config_name="config")
 def main(cfg: DictConfig) -> None:
 
-    # トラッキングを行う場所をチェックし，ログを収納するディレクトリを指定
-    print(hydra.utils.get_original_cwd())
-    dir = hydra.utils.get_original_cwd() + "/mlruns"
-    if not os.path.exists(dir):
-        os.makedirs(dir)
-
-    # mlflowの準備
-    mlflow.set_tracking_uri(dir)
-    tracking_uri = mlflow.get_tracking_uri()
-    mlflow.set_experiment(cfg.experiment_name)
-
-    # 学習したモデルのパラメータ
-    out_model_fn = './model/%s' % (cfg.savename)
-    if not os.path.exists(out_model_fn):
-        os.makedirs(out_model_fn)
-
     trainerWT = TrainerWT(
         model=LitCVAE(sample_points=cfg.model.sample_points, beta=cfg.model.beta),
         epoch=cfg.train.epoch,
@@ -135,16 +119,9 @@ def main(cfg: DictConfig) -> None:
     )
 
     # 学習
-    mlf_logger = MLFlowLogger(experiment_name=cfg.experiment_name, tracking_uri=tracking_uri)
     trainerWT.train(resume=cfg.train.resume)
     if cfg.save:
         trainerWT.save_model(comment=cfg.save)
-
-    # パラメータのロギング
-    mlf_logger.log_hyperparams(cfg)
-    # モデルの保存
-    mlf_logger.experiment.log_artifact(mlf_logger.run_id, out_model_fn)
-
     # trainerWT.test()
 
 
