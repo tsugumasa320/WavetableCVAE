@@ -1,5 +1,5 @@
 train:
-  epoch: 1
+  epoch: 5000
   batch_size: 32
   resume: False
   auto_lr_find: True
@@ -8,6 +8,10 @@ train:
 model:
   sample_points: 600
   beta: 0.01
+  duplicate_num: 12
+  latent_dim: 256
+  enc_cond_layer: [True, True, True, True]
+  dec_cond_layer: [True, True, True, True]
 
 save: "-ess-yeojohnson-beta001-dec1111"
 seed: 42

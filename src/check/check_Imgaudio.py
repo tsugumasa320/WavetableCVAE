@@ -21,6 +21,7 @@ import torchaudio
 from src.dataio import akwd_dataset  # ,DataLoader  # 追加
 from src.dataio import akwd_datamodule
 from src.models import VAE4Wavetable
+from src.models import cvae
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -33,7 +34,8 @@ class EvalModelInit:
         self.model = self._read_model(read_path)
 
     def _read_model(self, path: Path):
-        model = VAE4Wavetable.LitAutoEncoder(sample_points=600, beta=0.1)
+        #model = VAE4Wavetable.LitAutoEncoder(sample_points=600, beta=0.1)
+        model = cvae.LitCVAE(sample_points=600, beta=0.1)
         readCkptModel = model.load_from_checkpoint(checkpoint_path=path)
         return readCkptModel
 

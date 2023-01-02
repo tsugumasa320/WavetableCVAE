@@ -20,25 +20,31 @@ data_dir = root / "data"
 
 class LitCVAE(pl.LightningModule):
     def __init__(
-        self, sample_points: int = 600, beta: float = 1, duplicate_num: int = 6, latent_dim: int = 128
+        self,
+        enc_cond_layer: list,
+        dec_cond_layer: list,
+        sample_points: int = 600,
+        beta: float = 1, duplicate_num:
+        int = 6,
+        latent_dim: int = 128,
     ):  # Define computations here
         super().__init__()
         assert sample_points == 600
-        assert duplicate_num == 6
 
         self.sample_points = sample_points
         self.duplicate_num = duplicate_num
 
         # self.logging_graph_flg = True
 
-        self.encoder = Encoder(cond_layer=[False, False, False, False], cond_ch=9, latent_dim=128)
+        self.encoder = Encoder(cond_layer=enc_cond_layer, cond_ch=9, latent_dim=128)
 
-        self.decoder = Decoder(cond_layer=[True, True, True, True], cond_ch=9, latent_dim=128)
+        self.decoder = Decoder(cond_layer=dec_cond_layer, cond_ch=9, latent_dim=128)
 
         self.beta = beta
         self.loudness = submodule.Loudness(44100, 3600)
         self.distance = submodule.Distance(scales=[3600], overlap=0)
 
+        """
         self.spectroCentroidZ \
             = self.spectroSpreadZ \
             = self.spectroKurtosisZ \
@@ -48,6 +54,7 @@ class LitCVAE(pl.LightningModule):
             = self.HnrZ \
             = []
         self._latentdimAttributesCalc()
+        """
 
     def forward(
         self, x: torch.Tensor, attrs: dict, latent_op: dict = None
@@ -64,6 +71,7 @@ class LitCVAE(pl.LightningModule):
         output = self.decoder(hidden, attrs)  # torch.tensor(np.hanning(600)).to(device)
         return mu, log_var, output
 
+    """
     def _latentdimAttributesCalc(self):
 
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -211,6 +219,7 @@ class LitCVAE(pl.LightningModule):
             hidden = hidden + (self.HnrZ * alpha)
 
         return hidden
+    """
 
     def _reparametrize(self, mu: torch.Tensor, log_var: torch.Tensor) -> torch.Tensor:
         # Reparametrization Trick to allow gradients to backpropagate from the
@@ -297,15 +306,8 @@ class LitCVAE(pl.LightningModule):
             else:
                 tmp = torch.cat([tmp, scw])
 
-        spec_x = self._specToDB(tmp)  # [3600] -> [901,1]
-        return spec_x
-
-    def _specToDB(self, waveform: torch.Tensor) -> torch.Tensor:
-        combain_x = waveform.reshape(1, -1)  # [3600] -> [1,3600]
-        spec_x = combain_x
-        # spec_x = self.spec(combain_x) # [1,3600] -> [901,1]
-        # spec_x = self.ToDB(spec_x) #使わない方が良い結果が出てる
-        return spec_x
+        x = tmp.reshape(1, -1)  # [3600] -> [1,3600]
+        return x
 
     def _prepare_batch(
         self, batch: tuple
