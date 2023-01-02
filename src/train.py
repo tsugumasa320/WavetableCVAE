@@ -8,6 +8,7 @@ from models.components.callback import MyPrintingCallback
 from models.cvae import LitCVAE
 from tools.find_latest import find_latest_checkpoints, find_latest_versions
 from utils import model_save, torch_fix_seed
+from check.check_Imgaudio import EvalModelInit , Visualize
 
 # from confirm.check_audiofeature import FeatureExatractorInit
 # from confirm.check_Imgaudio import *
@@ -108,6 +109,9 @@ if __name__ == "__main__":
     comment = "-ess-yeojohnson-beta001-dec1111"
     trainerWT.save_model(comment=comment)
     # trainerWT.test()
+
+    # visualize = Visualize(find_latest_checkpoints(ckpt_dir))
+    # visualize.plot_gridspectrum(eval=True, latent_op=None, show=True, save_path=None)
 
     """
     featureExatractorInit = FeatureExatractorInit(
