@@ -329,6 +329,7 @@ class LitCVAE(pl.LightningModule):
 
     def configure_optimizers(self):  # Optimizerと学習率(lr)設定
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        self.log("lr", self.lr, on_step=True, on_epoch=False)
         return optimizer
 
 
