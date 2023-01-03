@@ -82,8 +82,9 @@ class TrainerWT(pl.LightningModule):
 
         print("Training...")
 
-        if resume:
-            resume_ckpt = find_latest_checkpoints(ckpt_dir)
+        if resume is not None:
+            resume_ckpt = resume
+            # resume_ckpt = find_latest_checkpoints(ckpt_dir)
         else:
             resume_ckpt = None
 
@@ -117,6 +118,7 @@ def main(cfg: DictConfig) -> None:
             sample_points = cfg.data.sample_points,
             sr = cfg.data.sample_rate,
             beta = cfg.model.beta,
+            zero_beta_epoch = cfg.model.zero_beta_epoch,
             lr = cfg.model.lr,
             duplicate_num = cfg.model.duplicate_num,
             latent_dim = cfg.model.latent_dim,
@@ -130,7 +132,7 @@ def main(cfg: DictConfig) -> None:
     trainerWT.train(resume=cfg.train.resume)
     if cfg.save:
         trainerWT.save_model(comment=cfg.save)
-    # trainerWT.test()
+    trainerWT.test()
 
 
 if __name__ == "__main__":

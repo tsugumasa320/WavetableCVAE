@@ -1,12 +1,13 @@
 train:
-  epoch: 1
+  epoch: 5000
   batch_size: 32
-  resume: False
+  resume: null # "/workspace/My-reserch-project/WavetableVAE/28tspm6i/checkpoints/epoch=1431-step=141768.ckpt"
   auto_lr_find: True
   auto_scale_batch_size: True
 
 model:
   beta: 0.01
+  zero_beta_epoch: 1000
   lr: 1e-5
   duplicate_num: 12
   latent_dim: 256

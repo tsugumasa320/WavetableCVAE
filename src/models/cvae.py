@@ -26,6 +26,7 @@ class LitCVAE(pl.LightningModule):
         sample_points: int = 600,
         sr :int = 44100,
         beta: float = 1,
+        zero_beta_epoch: int = 0,
         lr: float = 1e-5,
         duplicate_num:int = 6,
         latent_dim: int = 128,
@@ -38,13 +39,14 @@ class LitCVAE(pl.LightningModule):
 
         self.sample_points = sample_points
         self.duplicate_num = duplicate_num
+        self.zero_beta_epoch = zero_beta_epoch
         self.beta = beta
         self.lr = lr
 
         # self.logging_graph_flg = True
 
-        self.encoder = Encoder(cond_layer=enc_cond_layer, cond_ch=9, latent_dim=128)
-        self.decoder = Decoder(cond_layer=dec_cond_layer, cond_ch=9, latent_dim=128)
+        self.encoder = Encoder(cond_layer=enc_cond_layer, cond_ch=9, latent_dim=latent_dim)
+        self.decoder = Decoder(cond_layer=dec_cond_layer, cond_ch=9, latent_dim=latent_dim)
 
         self.loudness = submodule.Loudness(sr, sample_points * duplicate_num)
         self.distance = submodule.Distance(scales=[sample_points * duplicate_num], overlap=0)
@@ -260,6 +262,8 @@ class LitCVAE(pl.LightningModule):
     ) -> torch.Tensor:  # ロス関数定義.推論時は通らない
         x, attrs = self._prepare_batch(batch)
         mu, log_var, x_out = self.forward(x, attrs)
+        assert x.shape == x_out.shape, f'in: {x.shape} != out: {x_out.shape}'
+
         x = self._scw_batch_proc(x)
         x_out = self._scw_batch_proc(x_out)
 
@@ -267,22 +271,26 @@ class LitCVAE(pl.LightningModule):
         loud_x = self.loudness(x)
         loud_x_out = self.loudness(ｘ_out)
         self.loud_dist = (loud_x - loud_x_out).pow(2).mean()
-        self.spec_recon_loss = self.distance(x, x_out)
+        self.spec_loss = self.distance(x, x_out)
 
         kl_loss = -0.5 * (1 + log_var - mu**2 - torch.exp(log_var)).sum(
             dim=1
         )  # sumは潜在変数次元分を合計させている?
         self.kl_loss = kl_loss.mean()
 
-        self.loss = self.spec_recon_loss + self.loud_dist + self.beta * self.kl_loss
+        # 一定epochまではbeta=0.0
+        if self.current_epoch < self.zero_beta_epoch:
+            beta = 0.0
+        else:
+            beta = self.beta
 
+        self.loss = self.spec_loss + self.loud_dist + beta * self.kl_loss
+        self.log("beta", beta, on_step=True, on_epoch=False)
+        self.log(f"{stage}_loud_dist", self.loud_dist, on_step=True, on_epoch=False)
         self.log(f"{stage}_kl_loss", self.kl_loss, on_step=True, on_epoch=False)
         self.log(
-            f"{stage}_spec_recon_loss",
-            self.spec_recon_loss,
-            on_step=True,
-            on_epoch=False,
-        )
+            f"{stage}_spec_loss", self.spec_loss, on_step=True, on_epoch=False,
+            )
         self.log(
             f"{stage}_loss", self.loss, on_step=True, on_epoch=False, prog_bar=True
         )
@@ -292,14 +300,13 @@ class LitCVAE(pl.LightningModule):
         # batchを1つづつにする
         batch_size = len(x[:])
         for i in range(batch_size):
-            single_channel_scw = x[i, :, :]  # [32,1,600] -> [1,1,600]
+            single_channel_scw = x[i, :, :]  # ex: [32,1,600] -> [1,1,600]
             if i == 0:
-                tmp = self._scw_combain(single_channel_scw)  # [901,1]
+                tmp = self._scw_combain(single_channel_scw)
             else:
                 tmp = torch.cat(
                     [tmp, self._scw_combain(single_channel_scw)]
-                )  # [901*i,1]
-
+                ) # ex: [1,3600] -> [i,3600]
         return tmp
 
     def _scw_combain(self, scw: torch.Tensor) -> torch.Tensor:
@@ -311,8 +318,7 @@ class LitCVAE(pl.LightningModule):
                 tmp = scw
             else:
                 tmp = torch.cat([tmp, scw])
-
-        x = tmp.reshape(1, -1)  # [3600] -> [1,3600]
+        x = tmp.reshape(1, -1)  # ex: [3600] -> [1,3600]
         return x
 
     def _prepare_batch(
@@ -324,33 +330,6 @@ class LitCVAE(pl.LightningModule):
     def configure_optimizers(self):  # Optimizerと学習率(lr)設定
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
-
-    def _logging_graph(self, batch, batch_idx):  # not used
-        x, attrs = self._prepare_batch(batch)
-        tensorboard = self.logger.experiment
-        tensorboard.add_graph(self, x)  # graph表示
-
-    def _logging_hparams(self):  # not used
-
-        tensorboard = self.logger.experiment
-        tensorboard.add_hparams(
-            {
-                "N_FFT": N_FFT,
-                "HOP_LENGTH": HOP_LENGTH,
-                "MELSTFT_FLG": MELSTFT_FLG,
-                "SEED": SEED,
-                "SAMPLE_RATE": SAMPLE_RATE,
-                "MAX_SECONDS": MAX_SECONDS,
-                "NUM_TRAIN": NUM_TRAIN,
-                "NUM_VAL": NUM_VAL,
-                "LOAD_IDX": LOAD_IDX,
-                "LR": LR,
-                "BATCH_SIZE": BATCH_SIZE,
-                "MAX_EPOCHS": MAX_EPOCHS,
-            },
-            {},
-        )
-        # {'hparam/accuracy': 10, 'hparam/loss': 10})
 
 
 class Base(nn.Module):
