@@ -24,25 +24,30 @@ class LitCVAE(pl.LightningModule):
         enc_cond_layer: list,
         dec_cond_layer: list,
         sample_points: int = 600,
-        beta: float = 1, duplicate_num:
-        int = 6,
+        sr :int = 44100,
+        beta: float = 1,
+        lr: float = 1e-5,
+        duplicate_num:int = 6,
         latent_dim: int = 128,
     ):  # Define computations here
         super().__init__()
         assert sample_points == 600
 
+        # save hyper-parameters to self.hparams (auto-logged by W&B)
+        self.save_hyperparameters()
+
         self.sample_points = sample_points
         self.duplicate_num = duplicate_num
+        self.beta = beta
+        self.lr = lr
 
         # self.logging_graph_flg = True
 
         self.encoder = Encoder(cond_layer=enc_cond_layer, cond_ch=9, latent_dim=128)
-
         self.decoder = Decoder(cond_layer=dec_cond_layer, cond_ch=9, latent_dim=128)
 
-        self.beta = beta
-        self.loudness = submodule.Loudness(44100, 3600)
-        self.distance = submodule.Distance(scales=[3600], overlap=0)
+        self.loudness = submodule.Loudness(sr, sample_points * duplicate_num)
+        self.distance = submodule.Distance(scales=[sample_points * duplicate_num], overlap=0)
 
         """
         self.spectroCentroidZ \
@@ -64,11 +69,12 @@ class LitCVAE(pl.LightningModule):
 
         mu, log_var = self.encoder(x, attrs)
         hidden = self._reparametrize(mu, log_var)
-
+        """
         if latent_op is not None:
             hidden = self._latentdimControler(hidden, latent_op)
+        """
 
-        output = self.decoder(hidden, attrs)  # torch.tensor(np.hanning(600)).to(device)
+        output = self.decoder(hidden, attrs)
         return mu, log_var, output
 
     """
@@ -254,14 +260,14 @@ class LitCVAE(pl.LightningModule):
     ) -> torch.Tensor:  # ロス関数定義.推論時は通らない
         x, attrs = self._prepare_batch(batch)
         mu, log_var, x_out = self.forward(x, attrs)
-        spec_x = self._scw2spectrum(x)
-        spec_x_out = self._scw2spectrum(x_out)
+        x = self._scw_batch_proc(x)
+        x_out = self._scw_batch_proc(x_out)
 
         # RAVE Loss
-        loud_x = self.loudness(spec_x)
-        loud_x_out = self.loudness(spec_ｘ_out)
+        loud_x = self.loudness(x)
+        loud_x_out = self.loudness(ｘ_out)
         self.loud_dist = (loud_x - loud_x_out).pow(2).mean()
-        self.spec_recon_loss = self.distance(spec_x, spec_x_out)
+        self.spec_recon_loss = self.distance(x, x_out)
 
         kl_loss = -0.5 * (1 + log_var - mu**2 - torch.exp(log_var)).sum(
             dim=1
@@ -282,8 +288,8 @@ class LitCVAE(pl.LightningModule):
         )
         return self.loss
 
-    def _scw2spectrum(self, x: torch.Tensor) -> torch.Tensor:
-        # 波形を6つくっつけてSTFTする
+    def _scw_batch_proc(self, x: torch.Tensor) -> torch.Tensor:
+        # batchを1つづつにする
         batch_size = len(x[:])
         for i in range(batch_size):
             single_channel_scw = x[i, :, :]  # [32,1,600] -> [1,1,600]
@@ -297,7 +303,7 @@ class LitCVAE(pl.LightningModule):
         return tmp
 
     def _scw_combain(self, scw: torch.Tensor) -> torch.Tensor:
-
+        # scwをcatする
         scw = scw.reshape(self.sample_points)  # [1,1,600] -> [600]
 
         for i in range(self.duplicate_num):
@@ -316,7 +322,7 @@ class LitCVAE(pl.LightningModule):
         return x, attrs
 
     def configure_optimizers(self):  # Optimizerと学習率(lr)設定
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
 
     def _logging_graph(self, batch, batch_idx):  # not used

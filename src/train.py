@@ -7,7 +7,8 @@ import pytorch_lightning as pl
 import torch
 from hydra import compose, initialize
 from omegaconf import DictConfig
-from pytorch_lightning.loggers import MLFlowLogger , TensorBoardLogger
+from pytorch_lightning.loggers import MLFlowLogger , TensorBoardLogger, WandbLogger
+from pytorch_lightning import Trainer
 
 
 from check.check_Imgaudio import EvalModelInit, Visualize
@@ -39,7 +40,6 @@ class TrainerWT(pl.LightningModule):
         model: pl.LightningModule,
         epoch: int,
         batch_size: int,
-        logger: pl.loggers = TensorBoardLogger(save_dir=pllog_dir, name="WaveTableVAE"),
         data_dir: str = data_dir,
         seed: int = 42,
     ):
@@ -63,6 +63,7 @@ class TrainerWT(pl.LightningModule):
         else:
             raise ValueError("device must be 'cuda' or 'cpu'")
 
+        wandb_logger = WandbLogger(project='WavetableVAE', log_model='all') # log all new checkpoints during training
         # Trainer
         self.trainer = pl.Trainer(
             max_epochs=epoch,
@@ -74,7 +75,7 @@ class TrainerWT(pl.LightningModule):
             auto_scale_batch_size=True,
             accelerator=accelerator,
             devices=devices,
-            logger=logger,
+            logger=wandb_logger,
         )
 
     def train(self, resume: bool = False):
@@ -106,22 +107,23 @@ class TrainerWT(pl.LightningModule):
         self.model.train()
 
 
-@hydra.main(config_path="../conf", config_name="config")
+@hydra.main(version_base=None, config_path="../conf", config_name="config")
 def main(cfg: DictConfig) -> None:
 
     trainerWT = TrainerWT(
         model=LitCVAE(
-            sample_points=cfg.model.sample_points,
-            beta=cfg.model.beta,
-            duplicate_num = cfg.model.duplicate_num,
-            latent_dim = cfg.model.latent_dim,
             enc_cond_layer = cfg.model.enc_cond_layer,
             dec_cond_layer = cfg.model.dec_cond_layer,
+            sample_points = cfg.data.sample_points,
+            sr = cfg.data.sample_rate,
+            beta = cfg.model.beta,
+            lr = cfg.model.lr,
+            duplicate_num = cfg.model.duplicate_num,
+            latent_dim = cfg.model.latent_dim,
             ),
-        epoch=cfg.train.epoch,
+        epoch = cfg.train.epoch,
         batch_size=cfg.train.batch_size,
         data_dir=data_dir,
-        # logger=MLFlowLogger(experiment_name=cfg.experiment_name, tracking_uri=tracking_uri),
         seed=cfg.seed,
     )
     # 学習
@@ -134,36 +136,3 @@ def main(cfg: DictConfig) -> None:
 if __name__ == "__main__":
 
     main()
-
-    # visualize = Visualize(find_latest_checkpoints(ckpt_dir))
-    # visualize.plot_gridspectrum(eval=True, latent_op=None, show=True, save_path=None)
-
-    """
-    featureExatractorInit = FeatureExatractorInit(
-        ckpt_path= find_latest_checkpoints(ckpt_dir)
-        )
-
-    resume_version = find_latest_versions(pllog_dir)
-
-    mode = "latent"
-    featureExatractorInit.plot_condition_results(
-        mode=mode, # latent or cond
-        dm_num=15,
-        resolution_num=100,
-        bias=1,
-        save_name= resume_version / comment + "-" + mode,
-        )
-
-    mode = "cond"
-    featureExatractorInit.plot_condition_results(
-        mode="cond", # latent or cond
-        dm_num=15,
-        resolution_num=100,
-        bias=1,
-        save_name= resume_version / comment ,
-        )
-
-    visualize = Visualize(find_latest_checkpoints(ckpt_dir))
-    visualize.plot_gridspectrum(eval=True,latent_op=None,show=False,save_path=resume_version / comment)
-    visualize.plot_gridwaveform(eval=True,latent_op=None,show=False,save_path=resume_version / comment)
-    """

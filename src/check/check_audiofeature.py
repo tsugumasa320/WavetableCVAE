@@ -408,13 +408,14 @@ if __name__ == "__main__":
         ckpt_path =
         # "2022-12-27-12:32:17.145396-LitAutoEncoder-10000epoch-ess-yeojohnson-beta001-conditionCh1-EncOutDecIn.ckpt"
         # "2022-12-29-12:57:30.118964-LitAutoEncoder-10000epoch-ess-yeojohnson-beta001-vanillaVAE.ckpt"
-        "2023-01-02-03:39:52.893836-LitCVAE-10000epoch-ess-yeojohnson-beta001-dec1111.ckpt"
+        #"2023-01-02-03:39:52.893836-LitCVAE-10000epoch-ess-yeojohnson-beta001-dec1111.ckpt"
         # "2023-01-02-18:39:45.850879-LitCVAE-5000epoch-ess-yeojohnson-beta001-dec1111.ckpt"
+        "2023-01-03-03:58:03.921785-LitCVAE-3000epoch-ess-yeojohnson-beta001-dec1111.ckpt"
     )
     featureExatractorInit.plot_condition_results(
         mode="cond",  # latent or cond
         dm_num=15,
         resolution_num=100,
         bias=1,
-        save_name="check_audiofeature",
+        save_name="check_audiofeature_CVAEAll",
     )

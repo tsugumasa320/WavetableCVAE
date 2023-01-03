@@ -1,0 +1,25 @@
+train:
+  epoch: 3000
+  batch_size: 32
+  resume: false
+  auto_lr_find: true
+  auto_scale_batch_size: true
+model:
+  sample_points: 600
+  beta: 0.01
+  duplicate_num: 12
+  latent_dim: 256
+  enc_cond_layer:
+  - true
+  - true
+  - true
+  - true
+  dec_cond_layer:
+  - true
+  - true
+  - true
+  - true
+save: -ess-yeojohnson-beta001-dec1111
+seed: 42
+experiment_name: Wavetable-VAE
+savename: Wavetable-VAE
