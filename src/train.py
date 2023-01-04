@@ -117,8 +117,6 @@ def main(cfg: DictConfig) -> None:
             dec_cond_layer = cfg.model.dec_cond_layer,
             sample_points = cfg.data.sample_points,
             sr = cfg.data.sample_rate,
-            beta = cfg.model.beta,
-            zero_beta_epoch = cfg.model.zero_beta_epoch,
             lr = cfg.model.lr,
             duplicate_num = cfg.model.duplicate_num,
             latent_dim = cfg.model.latent_dim,

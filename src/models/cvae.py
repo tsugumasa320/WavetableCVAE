@@ -25,6 +25,8 @@ class LitCVAE(pl.LightningModule):
         dec_cond_layer: list,
         sample_points: int = 600,
         sr :int = 44100,
+        alpha: float = 1,
+        zero_alpha_epoch: int = 0,
         beta: float = 1,
         zero_beta_epoch: int = 0,
         lr: float = 1e-5,
@@ -39,8 +41,6 @@ class LitCVAE(pl.LightningModule):
 
         self.sample_points = sample_points
         self.duplicate_num = duplicate_num
-        self.zero_beta_epoch = zero_beta_epoch
-        self.beta = beta
         self.lr = lr
 
         # self.logging_graph_flg = True
@@ -48,7 +48,7 @@ class LitCVAE(pl.LightningModule):
         self.encoder = Encoder(cond_layer=enc_cond_layer, cond_ch=9, latent_dim=latent_dim)
         self.decoder = Decoder(cond_layer=dec_cond_layer, cond_ch=9, latent_dim=latent_dim)
 
-        self.loudness = submodule.Loudness(sr, sample_points * duplicate_num)
+        # self.loudness = submodule.Loudness(sr, sample_points * duplicate_num)
         self.distance = submodule.Distance(scales=[sample_points * duplicate_num], overlap=0)
 
         """
@@ -254,6 +254,7 @@ class LitCVAE(pl.LightningModule):
     def predict_step(
         self, attrs: dict, attrs_idx: int, dataloader_idx=None
     ):  # the complete prediction loop
+        print("predict_step")
         x, _ = attrs
         return self(x)
 
@@ -268,28 +269,29 @@ class LitCVAE(pl.LightningModule):
         x_out = self._scw_batch_proc(x_out)
 
         # RAVE Loss
-        loud_x = self.loudness(x)
-        loud_x_out = self.loudness(ｘ_out)
-        self.loud_dist = (loud_x - loud_x_out).pow(2).mean()
-        self.spec_loss = self.distance(x, x_out)
+        # loud_x = self.loudness(x)
+        # loud_x_out = self.loudness(ｘ_out)
+        # self.loud_dist = (loud_x - loud_x_out).pow(2).mean()
+        spec_loss = self.distance(x, x_out)
+        # 波形のL1ロスを取る
+        wave_loss = torch.nn.functional.mse_loss(x, x_out)
 
         kl_loss = -0.5 * (1 + log_var - mu**2 - torch.exp(log_var)).sum(
             dim=1
         )  # sumは潜在変数次元分を合計させている?
-        self.kl_loss = kl_loss.mean()
+        kl_loss = kl_loss.mean()
 
-        # 一定epochまではbeta=0.0
-        if self.current_epoch < self.zero_beta_epoch:
-            beta = 0.0
-        else:
-            beta = self.beta
+        alpha = self.current_epoch / 1000 # self.trainer.max_epochs
+        beta = self.current_epoch / 1000 # self.trainer.max_epochs
 
-        self.loss = self.spec_loss + self.loud_dist + beta * self.kl_loss
+        self.log("alpha", alpha, on_step=True, on_epoch=False)
+        self.loss = spec_loss + (alpha* wave_loss) + (beta*kl_loss) # + self.loud_dist
         self.log("beta", beta, on_step=True, on_epoch=False)
-        self.log(f"{stage}_loud_dist", self.loud_dist, on_step=True, on_epoch=False)
-        self.log(f"{stage}_kl_loss", self.kl_loss, on_step=True, on_epoch=False)
+        # self.log(f"{stage}_loud_dist", self.loud_dist, on_step=True, on_epoch=False)
+        self.log(f"{stage}_wave_loss", wave_loss, on_step=True, on_epoch=False)
+        self.log(f"{stage}_kl_loss", kl_loss, on_step=True, on_epoch=False)
         self.log(
-            f"{stage}_spec_loss", self.spec_loss, on_step=True, on_epoch=False,
+            f"{stage}_spec_loss", spec_loss, on_step=True, on_epoch=False,
             )
         self.log(
             f"{stage}_loss", self.loss, on_step=True, on_epoch=False, prog_bar=True
@@ -329,7 +331,6 @@ class LitCVAE(pl.LightningModule):
 
     def configure_optimizers(self):  # Optimizerと学習率(lr)設定
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        self.log("lr", self.lr, on_step=True, on_epoch=False)
         return optimizer
 
 
@@ -480,37 +481,37 @@ class Decoder(Base):
         self.deconv0 = nn.Sequential(
             submodule.UpSampling(
                 in_channels=latent_dim + cond_ch if cond_layer[0] is True else latent_dim,
-                out_channels=64, kernel_size=8, stride=2
+                out_channels=512, kernel_size=8, stride=2
             ),
-            submodule.ResBlock(64, 3),
+            submodule.ResBlock(512, 3),
         )
 
         self.deconv1 = nn.Sequential(
             submodule.UpSampling(
-                in_channels=64 + cond_ch if cond_layer[1] is True else 64,
-                out_channels=32, kernel_size=8, stride=1
+                in_channels=512 + cond_ch if cond_layer[1] is True else 512,
+                out_channels=256, kernel_size=8, stride=1
             ),
-            submodule.ResBlock(32, 3),
+            submodule.ResBlock(256, 3),
         )
 
         self.deconv2 = nn.Sequential(
             submodule.UpSampling(
-                in_channels=32 + cond_ch if cond_layer[2] is True else 32,
-                out_channels=16, kernel_size=8, stride=2
+                in_channels=256 + cond_ch if cond_layer[2] is True else 256,
+                out_channels=128, kernel_size=8, stride=2
             ),
-            submodule.ResBlock(16, 3),
+            submodule.ResBlock(128, 3),
         )
 
         self.deconv3 = nn.Sequential(
             submodule.UpSampling(
-                in_channels=16 + cond_ch if cond_layer[3] is True else 16,
-                out_channels=8, kernel_size=9, stride=1
+                in_channels=128 + cond_ch if cond_layer[3] is True else 128,
+                out_channels=64, kernel_size=9, stride=1
             ),
-            submodule.ResBlock(8, 3),
+            submodule.ResBlock(64, 3),
         )
 
         self.convout = nn.Sequential(
-            submodule.ConvOut(in_channels=8, out_channels=1, kernel_size=1, stride=1),
+            submodule.ConvOut(in_channels=64, out_channels=1, kernel_size=1, stride=1),
         )
 
     def forward(self, x, attrs):

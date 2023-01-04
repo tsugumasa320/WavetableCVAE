@@ -213,7 +213,7 @@ class Distance(nn.Module):
                 s,
                 int(s * (1 - overlap)),
                 s,
-                torch.hann_window(s).to(signal),
+                None, #torch.hann_window(s).to(signal),
                 True,
                 normalized=True,
                 return_complex=True,

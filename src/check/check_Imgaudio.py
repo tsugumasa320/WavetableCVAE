@@ -257,15 +257,17 @@ if __name__ == "__main__":
     # visualize.plot_gridspectrum(eval=True,latent_op=latent_op,show=True,save_path=None)
     # visualize.plot_gridwaveform(eval=True,latent_op=latent_op,show=True,save_path=None)
     idx = 1
-    label_name = "PitchSalience"
+    label_name = "SpectralCentroid"
+    show = False
+    save = True
 
-    visualize.read_waveform(idx=idx, latent_op=None, eval=False, save=False, show=True)
-    visualize.read_waveform(idx=idx, latent_op=None, eval=True, save=False, show=True)
+    visualize.read_waveform(idx=idx, latent_op=None, eval=False, save=save, show=show)
+    visualize.read_waveform(idx=idx, latent_op=None, eval=True, save=save, show=show)
     latent_op[label_name] = -0.5
     print(latent_op)
-    visualize.read_waveform(idx=idx, latent_op=None, eval=True, save=False, show=True)
+    visualize.read_waveform(idx=idx, latent_op=None, eval=True, save=save, show=show)
     latent_op[label_name] = 1.5
     print(latent_op)
-    visualize.read_waveform(idx=idx, latent_op=None, eval=True, save=False, show=True)
+    visualize.read_waveform(idx=idx, latent_op=None, eval=True, save=save, show=show)
 
     print("done")
