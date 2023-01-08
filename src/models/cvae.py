@@ -4,6 +4,10 @@ import pyrootutils
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
+import logging
+
+# main.pyで宣言したloggerの子loggerオブジェクトの宣言
+logger = logging.getLogger("unit_test").getChild("sub")
 
 from src.dataio import akwd_dataset
 
@@ -25,10 +29,6 @@ class LitCVAE(pl.LightningModule):
         dec_cond_layer: list,
         sample_points: int = 600,
         sr :int = 44100,
-        alpha: float = 1,
-        zero_alpha_epoch: int = 0,
-        beta: float = 1,
-        zero_beta_epoch: int = 0,
         lr: float = 1e-5,
         duplicate_num:int = 6,
         latent_dim: int = 128,
@@ -43,12 +43,10 @@ class LitCVAE(pl.LightningModule):
         self.duplicate_num = duplicate_num
         self.lr = lr
 
-        # self.logging_graph_flg = True
-
         self.encoder = Encoder(cond_layer=enc_cond_layer, cond_ch=9, latent_dim=latent_dim)
         self.decoder = Decoder(cond_layer=dec_cond_layer, cond_ch=9, latent_dim=latent_dim)
 
-        # self.loudness = submodule.Loudness(sr, sample_points * duplicate_num)
+        self.loudness = submodule.Loudness(sr, block_size=sample_points * duplicate_num, n_fft=sample_points * duplicate_num)
         self.distance = submodule.Distance(scales=[sample_points * duplicate_num], overlap=0)
 
         """
@@ -269,26 +267,27 @@ class LitCVAE(pl.LightningModule):
         x_out = self._scw_batch_proc(x_out)
 
         # RAVE Loss
-        # loud_x = self.loudness(x)
-        # loud_x_out = self.loudness(ｘ_out)
-        # self.loud_dist = (loud_x - loud_x_out).pow(2).mean()
+        loud_x = self.loudness(x)
+        loud_x_out = self.loudness(ｘ_out)
+        self.loud_dist = (loud_x - loud_x_out).pow(2).mean()
         spec_loss = self.distance(x, x_out)
         # 波形のL1ロスを取る
-        wave_loss = torch.nn.functional.mse_loss(x, x_out)
+        # wave_loss = torch.nn.functional.mse_loss(x, x_out)
 
         kl_loss = -0.5 * (1 + log_var - mu**2 - torch.exp(log_var)).sum(
             dim=1
         )  # sumは潜在変数次元分を合計させている?
         kl_loss = kl_loss.mean()
 
-        alpha = self.current_epoch / 1000 # self.trainer.max_epochs
-        beta = self.current_epoch / 1000 # self.trainer.max_epochs
+        # alpha = self.current_epoch / 10000 # self.trainer.max_epochs
+        beta = 0.01
+        #beta = self.current_epoch / 10000 # self.trainer.max_epochs
 
-        self.log("alpha", alpha, on_step=True, on_epoch=False)
-        self.loss = spec_loss + (alpha* wave_loss) + (beta*kl_loss) # + self.loud_dist
+        # self.log("alpha", alpha, on_step=True, on_epoch=False)
+        self.loss = spec_loss + (beta*kl_loss) + self.loud_dist
         self.log("beta", beta, on_step=True, on_epoch=False)
-        # self.log(f"{stage}_loud_dist", self.loud_dist, on_step=True, on_epoch=False)
-        self.log(f"{stage}_wave_loss", wave_loss, on_step=True, on_epoch=False)
+        self.log(f"{stage}_loud_dist", self.loud_dist, on_step=True, on_epoch=False)
+        # self.log(f"{stage}_wave_loss", wave_loss, on_step=True, on_epoch=False)
         self.log(f"{stage}_kl_loss", kl_loss, on_step=True, on_epoch=False)
         self.log(
             f"{stage}_spec_loss", spec_loss, on_step=True, on_epoch=False,
@@ -450,18 +449,22 @@ class Encoder(Base):
     def forward(self, x, attrs):
 
         if self.cond_layer[0] is True:
+            logger.info("Encoder: conditioning[0]")
             x = self._conditioning(x, attrs)
         x = self.conv0(x)
 
         if self.cond_layer[1] is True:
+            logger.info("Encoder: conditioning[1]")
             x = self._conditioning(x, attrs)
         x = self.conv1(x)
 
         if self.cond_layer[2] is True:
+            logger.info("Encoder: conditioning[2]")
             x = self._conditioning(x, attrs)
         x = self.conv2(x)
 
         if self.cond_layer[3] is True:
+            logger.info("Encoder: conditioning[3]")
             x = self._conditioning(x, attrs)
         x = self.conv3(x)
 
@@ -481,54 +484,58 @@ class Decoder(Base):
         self.deconv0 = nn.Sequential(
             submodule.UpSampling(
                 in_channels=latent_dim + cond_ch if cond_layer[0] is True else latent_dim,
-                out_channels=512, kernel_size=8, stride=2
-            ),
-            submodule.ResBlock(512, 3),
-        )
-
-        self.deconv1 = nn.Sequential(
-            submodule.UpSampling(
-                in_channels=512 + cond_ch if cond_layer[1] is True else 512,
-                out_channels=256, kernel_size=8, stride=1
-            ),
-            submodule.ResBlock(256, 3),
-        )
-
-        self.deconv2 = nn.Sequential(
-            submodule.UpSampling(
-                in_channels=256 + cond_ch if cond_layer[2] is True else 256,
-                out_channels=128, kernel_size=8, stride=2
-            ),
-            submodule.ResBlock(128, 3),
-        )
-
-        self.deconv3 = nn.Sequential(
-            submodule.UpSampling(
-                in_channels=128 + cond_ch if cond_layer[3] is True else 128,
-                out_channels=64, kernel_size=9, stride=1
+                out_channels=64, kernel_size=8, stride=2
             ),
             submodule.ResBlock(64, 3),
         )
 
+        self.deconv1 = nn.Sequential(
+            submodule.UpSampling(
+                in_channels=64 + cond_ch if cond_layer[1] is True else 64,
+                out_channels=32, kernel_size=8, stride=1
+            ),
+            submodule.ResBlock(32, 3),
+        )
+
+        self.deconv2 = nn.Sequential(
+            submodule.UpSampling(
+                in_channels=32 + cond_ch if cond_layer[2] is True else 32,
+                out_channels=16, kernel_size=8, stride=2
+            ),
+            submodule.ResBlock(16, 3),
+        )
+
+        self.deconv3 = nn.Sequential(
+            submodule.UpSampling(
+                in_channels=16 + cond_ch if cond_layer[3] is True else 16,
+                out_channels=8, kernel_size=9, stride=1
+            ),
+            submodule.ResBlock(8, 3),
+        )
+
         self.convout = nn.Sequential(
-            submodule.ConvOut(in_channels=64, out_channels=1, kernel_size=1, stride=1),
+            submodule.ConvOut(in_channels=8, out_channels=1, kernel_size=1, stride=1),
         )
 
     def forward(self, x, attrs):
 
         if self.cond_layer[0] is True:
+            logger.info("Decoder: conditioning[0]")
             x = self._conditioning(x, attrs)
         x = self.deconv0(x)
 
         if self.cond_layer[1] is True:
+            logger.info("Decoder: conditioning[1]")
             x = self._conditioning(x, attrs)
         x = self.deconv1(x)
 
         if self.cond_layer[2] is True:
+            logger.info("Decoder: conditioning[2]")
             x = self._conditioning(x, attrs)
         x = self.deconv2(x)
 
         if self.cond_layer[3] is True:
+            logger.info("Decoder: conditioning[3]")
             x = self._conditioning(x, attrs)
         x = self.deconv3(x)
         x = self.convout(x)

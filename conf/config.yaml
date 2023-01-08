@@ -1,21 +1,42 @@
-train:
-  epoch: 500
+
+
+hydra:
+  run:
+    dir: ./outputs/${model._target_}/${now:%Y%m%d}T${now:%H%M%S}-${trainer.epoch}
+  sweep:
+    dir: ./outputs/${model._target_}/${now:%Y%m%d}T${now:%H%M%S}-${trainer.epoch}
+
+model:
+  _target_: "LitCVAE"
+  enc_cond_layer: [Falase, False, False, False]
+  dec_cond_layer: [True, False, False, False]
+  sample_points: 600
+  sample_rate: 44100
+  lr: 1e-5
+  duplicate_num: 6
+  latent_dim: 128
+
+datamodule:
+  _target_: "AWKDDataModule"
   batch_size: 32
-  resume: null # "/workspace/My-reserch-project/WavetableVAE/28tspm6i/checkpoints/epoch=1431-step=141768.ckpt"
+  data_dir: root / "data/AKWF_44k1_600s"
+
+logger:
+  _target_: WandbLogger
+  project: 'WavetableVAE'
+  log_model: True)
+
+trainer:
+  _target_: "pl.Trainer"
+  epoch: 10000
+  enable_checkpointing: True
   auto_lr_find: True
   auto_scale_batch_size: True
 
-model:
-  duplicate_num: 30
-  latent_dim: 512
-  enc_cond_layer: [True, True, True, True]
-  dec_cond_layer: [True, True, True, True]
-
-data:
-  sample_points: 600
-  sample_rate: 44100
-
+resume: null
+# "/workspace/My-reserch-project/WavetableVAE/28tspm6i/checkpoints/epoch=1431-step=141768.ckpt"
 save: "-ess-yeojohnson-dec1000"
 seed: 42
 experiment_name: "Wavetable-VAE"
 savename: "Wavetable-VAE"
+debug_mode: False

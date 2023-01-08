@@ -20,7 +20,6 @@ import torchaudio
 
 from src.dataio import akwd_dataset  # ,DataLoader  # 追加
 from src.dataio import akwd_datamodule
-from src.models import VAE4Wavetable
 from src.models import cvae
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -34,7 +33,6 @@ class EvalModelInit:
         self.model = self._read_model(read_path)
 
     def _read_model(self, path: Path):
-        #model = VAE4Wavetable.LitAutoEncoder(sample_points=600, beta=0.1)
         model = cvae.LitCVAE(
             enc_cond_layer=[True,True,True,True],
             dec_cond_layer=[True,True,True,True],
@@ -50,6 +48,7 @@ class EvalModelInit:
         save: bool = False,
         show: bool = True,
         title: str = "",
+        comment: str = "",
     ):
 
         x, attrs = self.dataset[idx]
@@ -61,7 +60,7 @@ class EvalModelInit:
         plt.suptitle(title + attrs["name"])
 
         if save is True:
-            plt.savefig(output_dir / f"waveform_{idx}.jpeg")
+            plt.savefig(output_dir / f"waveform_{idx}_{comment}.jpeg")
         if show is True:
             plt.show()
 
@@ -247,27 +246,22 @@ if __name__ == "__main__":
         "HNR": None,
     }
 
-    visualize = Visualize(
-        # '2022-12-25-05:28:07.302207-LitAutoEncoder-1000epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt'
-        # '2022-12-21-13:35:50.554203-LitAutoEncoder-4000epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt'
-        # '2022-12-21-00:32:19.217358-LitAutoEncoder-7500epoch-ess-yeojohnson-beta1-conditionCh1-Dec.ckpt'
-        "2022-12-27-12:32:17.145396-LitAutoEncoder-10000epoch-ess-yeojohnson-beta001-conditionCh1-EncOutDecIn.ckpt"
-    )
+    ckpt_path = "2023-01-08-16:12:05.718043-LitCVAE-10000epoch-ess-yeojohnson-dec1000.ckpt"
+
+    visualize = Visualize(ckpt_path=ckpt_path)
     # visualize.z2wav()
-    # visualize.plot_gridspectrum(eval=True,latent_op=latent_op,show=True,save_path=None)
-    # visualize.plot_gridwaveform(eval=True,latent_op=latent_op,show=True,save_path=None)
-    idx = 1
+    visualize.plot_gridspectrum(eval=True,latent_op=latent_op,show=True,save_path=ckpt_path)
+    visualize.plot_gridwaveform(eval=True,latent_op=latent_op,show=True,save_path=ckpt_path)
+    idx = 4
     label_name = "SpectralCentroid"
     show = False
     save = True
 
-    visualize.read_waveform(idx=idx, latent_op=None, eval=False, save=save, show=show)
-    visualize.read_waveform(idx=idx, latent_op=None, eval=True, save=save, show=show)
-    latent_op[label_name] = -0.5
-    print(latent_op)
-    visualize.read_waveform(idx=idx, latent_op=None, eval=True, save=save, show=show)
-    latent_op[label_name] = 1.5
-    print(latent_op)
-    visualize.read_waveform(idx=idx, latent_op=None, eval=True, save=save, show=show)
+    visualize.read_waveform(idx=idx, latent_op=None, eval=False, save=save, show=show, comment="train")
+    visualize.read_waveform(idx=idx, latent_op=None, eval=True, save=save, show=show, comment="eval")
+    latent_op[label_name] = 0
+    visualize.read_waveform(idx=idx, latent_op=None, eval=True, save=save, show=show, comment="cent0")
+    latent_op[label_name] = 1
+    visualize.read_waveform(idx=idx, latent_op=None, eval=True, save=save, show=show, comment="cent1")
 
     print("done")

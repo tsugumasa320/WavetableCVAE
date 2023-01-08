@@ -79,6 +79,7 @@ class Loudness(nn.Module):
         self.n_fft = n_fft
 
         f = np.linspace(0, sr / 2, n_fft // 2 + 1) + 1e-7
+        # z_weight = librosa.frequency_weighting(f,"Z").reshape(-1, 1)
         a_weight = librosa.A_weighting(f).reshape(-1, 1)
 
         self.register_buffer("a_weight", torch.from_numpy(a_weight).float())
@@ -91,7 +92,7 @@ class Loudness(nn.Module):
             self.block_size,
             self.n_fft,
             center=True,
-            window=self.window,
+            window=None, # self.window,
             return_complex=True,
         ).abs()
         x = torch.log(x + 1e-7) + self.a_weight

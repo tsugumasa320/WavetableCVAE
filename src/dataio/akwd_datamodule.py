@@ -1,4 +1,5 @@
 import pyrootutils
+import os
 
 root = pyrootutils.setup_root(
     search_from=__file__,
@@ -41,16 +42,18 @@ class AWKDDataModule(pl.LightningDataModule):
         )
 
     def val_dataloader(self):  # val用DataLoaderの設定
-        return torch.utils.data.DataLoader(self.val_dataset, batch_size=self.batch_size)
+        return torch.utils.data.DataLoader(
+            self.val_dataset, batch_size=self.batch_size, num_workers=os.cpu_count()
+            )
 
     def test_dataloader(self):  # Test用DataLoaderの設定
         return torch.utils.data.DataLoader(
-            self.test_dataset, batch_size=self.batch_size
+            self.test_dataset, batch_size=self.batch_size, num_workers=os.cpu_count()
         )
 
     def predict_dataloader(self):
         return torch.utils.data.DataLoader(
-            self.test_dataset, batch_size=self.batch_size
+            self.test_dataset, batch_size=self.batch_size, num_workers=os.cpu_count()
         )
 
 

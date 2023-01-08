@@ -307,32 +307,32 @@ def Normalize(list, normalize_method: str, label_name):
     elif normalize_method == "yeojohnson":
 
         settings = {
-            "centro_lmbda": -10.148733692848015,
-            "spread_lmbda": -34.713344641365005,
-            "kurtosis_lmbda": -0.06085805654641739,
-            "zeroX_lmbda": -86.95932559132982,
-            "oddfreq_lmbda": -0.4448269945442323,
-            "pitchSali_lmbda": 0.03215774267929409,
-            "HNR_lmbda": -0.6864951592316563,
+            "centro_lmbda": -10.14873518662779,
+            "spread_lmbda": -34.71334788997653,
+            "kurtosis_lmbda": -0.06085662120288835,
+            "zeroX_lmbda": -86.77496839428787,
+            "oddfreq_lmbda": -2.8286562663718424,
+            "pitchSali_lmbda": 1.500453247567336,
+            "HNR_lmbda": -1.4916207643168813,
         }
 
         list = yeojonson_for_WT(list, label_name, settings)
 
         settings = {
-            "c_min": 0.0027861194649845184,
-            "c_max": 0.09782558652904423,
-            "sp_min": 4.540917180699981e-05,
-            "sp_max": 0.02874219353637187,
-            "k_min": -3.6174942560623955,
-            "k_max": 7.218490470781908,
+            "c_min": 0.0027861447273007382,
+            "c_max": 0.0978255729087661,
+            "sp_min": 4.5351196495637354e-05,
+            "sp_max": 0.028742190912001548,
+            "k_min": -3.6174910332648937,
+            "k_max": 7.218643905634648,
             "z_min": -0.0,
-            "z_max": 0.011499629202502738,
-            "o_min": 4.4301400159600645e-13,
-            "o_max": 2.144040707985547,
-            "ps_min": 2.0862127571496856e-06,
-            "ps_max": 0.7007423659379493,
+            "z_max": 0.011524060665239344,
+            "o_min": -0.0,
+            "o_max": 0.35352474905894155,
+            "ps_min": 2.1185112334499885e-06,
+            "ps_max": 1.2189910272793791,
             "h_min": -0.0,
-            "h_max": 1.3864458576891578,
+            "h_max": 0.668540105306512,
         }
         list = min_max_for_WT(list, label_name, settings)
     else:
@@ -404,22 +404,13 @@ def yeojonson_for_WT(list, label_name: str, sett):
 
 
 if __name__ == "__main__":
-    featureExatractorInit = FeatureExatractorInit(
-        ckpt_path =
-        # "2022-12-27-12:32:17.145396-LitAutoEncoder-10000epoch-ess-yeojohnson-beta001-conditionCh1-EncOutDecIn.ckpt"
-        # "2022-12-29-12:57:30.118964-LitAutoEncoder-10000epoch-ess-yeojohnson-beta001-vanillaVAE.ckpt"
-        #"2023-01-02-03:39:52.893836-LitCVAE-10000epoch-ess-yeojohnson-beta001-dec1111.ckpt"
-        # "2023-01-02-18:39:45.850879-LitCVAE-5000epoch-ess-yeojohnson-beta001-dec1111.ckpt"
-        # "2023-01-03-03:58:03.921785-LitCVAE-3000epoch-ess-yeojohnson-beta001-dec1111.ckpt"
-        # "2023-01-03-13:35:17.916871-LitCVAE-5000epoch-ess-yeojohnson-beta001-dec1111.ckpt"
-        # "2023-01-03-17:58:48.819454-LitCVAE-5000epoch-ess-yeojohnson-beta001-dec1000.ckpt"
-        # "2023-01-04-04:27:52.540524-LitCVAE-500epoch-ess-yeojohnson-dec1000.ckpt"
-        "2023-01-04-06:00:21.688514-LitCVAE-500epoch-ess-yeojohnson-dec1000.ckpt"
-    )
+
+    ckpt_path = "2023-01-08-16:12:05.718043-LitCVAE-10000epoch-ess-yeojohnson-dec1000.ckpt"
+    featureExatractorInit = FeatureExatractorInit(ckpt_path = ckpt_path,)
     featureExatractorInit.plot_condition_results(
         mode="cond",  # latent or cond
-        dm_num=15,
+        dm_num=10,
         resolution_num=100,
         bias=1,
-        save_name="check_audiofeature_CVAE_Dec1000_1000epoch",
+        save_name= ckpt_path,
     )

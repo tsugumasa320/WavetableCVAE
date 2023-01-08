@@ -16,6 +16,7 @@ class MyPrintingCallback(pl.callbacks.Callback):
         # model._logging_hparams()
         # tensorboard = model.logger.experiment
         # tensorboard.add_graph(model, x) #graph表示
+        """
         end = time.perf_counter()
         # Todo: 学習時にここのコメントを設定できるようにする
         on_train_end_notification(model, comment="")
@@ -26,7 +27,9 @@ class MyPrintingCallback(pl.callbacks.Callback):
                             \n loud_dist : {round(float(model.loud_dist),4)} \
                             \n time : {round((end - self.start)/60,2)}min"
         )
+        """
         print("Training is ending")
+
 
 
 def LINENotification(comment: str) -> None:
