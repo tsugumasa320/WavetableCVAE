@@ -1,0 +1,5 @@
+[2023-01-09 13:52:39,088][unit_test][INFO] - Generation start!
+[2023-01-09 13:52:39,090][root][INFO] - Instantiating datamodule <src.dataio.akwd_datamodule.AWKDDataModule>
+[2023-01-09 13:52:39,149][root][INFO] - Instantiating model <src.models.cvae.LitCVAE>
+[2023-01-09 13:52:39,166][root][INFO] - Instantiating loggers...
+[2023-01-09 13:52:45,286][root][INFO] - Instantiating trainer <pytorch_lightning.Trainer>

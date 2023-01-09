@@ -2,12 +2,12 @@
 
 hydra:
   run:
-    dir: ./log/hydra/${model._target_}/${now:%Y%m%d}T${now:%H%M%S}-${trainer.epoch}epoch
+    dir: ./log/hydra/${model._target_}/${now:%Y%m%d}T${now:%H%M%S}-${trainer.max_epochs}epoch
   sweep:
-    dir: ./log/hydra/${model._target_}/${now:%Y%m%d}T${now:%H%M%S}-${trainer.epoch}epoch
+    dir: ./log/hydra/${model._target_}/${now:%Y%m%d}T${now:%H%M%S}-${trainer.max_epochs}epoch
 
 model:
-  _target_: "LitCVAE"
+  _target_: "src.models.cvae.LitCVAE"
   enc_cond_layer: [Falase, False, False, False]
   dec_cond_layer: [True, False, False, False]
   sample_points: 600
@@ -17,24 +17,35 @@ model:
   latent_dim: 128
 
 datamodule:
-  _target_: "AWKDDataModule"
+  _target_: "src.dataio.akwd_datamodule.AWKDDataModule"
   batch_size: 32
-  data_dir: root / "data/AKWF_44k1_600s"
 
 logger:
-  _target_: "WandbLogger"
+  _target_: pytorch_lightning.loggers.wandb.WandbLogger
+  save_dir: null # "${paths.output_dir}"
+  offline: False
+  id: null # pass correct id to resume experiment!
+  anonymous: null # enable anonymous logging
   project: 'WavetableVAE'
-  log_model: True)
+  log_model: True # upload lightning ckpts
+  prefix: "" # a string to put at the beginning of metric keys
+  # entity: "" # set to name of your wandb team
+  group: ""
+  tags: []
+  job_type: ""
 
 trainer:
-  _target_: "pl.Trainer"
-  epoch: 10000
+  _target_: pytorch_lightning.Trainer
+  max_epochs: 10000
   enable_checkpointing: True
   auto_lr_find: True
   auto_scale_batch_size: True
 
+callbacks:
+  _target_: "src.models.components.callback.MyPrintingCallback"
+
 resume: null
 # "/workspace/My-reserch-project/WavetableVAE/28tspm6i/checkpoints/epoch=1431-step=141768.ckpt"
-save: "-ess-yeojohnson-dec1000"
+save: null
 seed: 42
 debug_mode: False

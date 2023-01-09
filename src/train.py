@@ -1,18 +1,19 @@
+import datetime
 import logging
 import os
+import subprocess
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import hydra
-import wandb
 import pyrootutils
 import pytorch_lightning as pl
 import torch
-import datetime
+import wandb
 from hydra import compose, initialize
 from omegaconf import DictConfig
 from pytorch_lightning import Trainer
-from pytorch_lightning.loggers import MLFlowLogger, TensorBoardLogger,WandbLogger
-from pathlib import Path
-import subprocess
+from pytorch_lightning.loggers import WandbLogger
 
 root = pyrootutils.setup_root(
     search_from=__file__,
@@ -59,40 +60,25 @@ def setup_logger(logger_level: int = logging.INFO):
     # TODO 設定をログ出力するようにしたい
 
 class TrainerWT(pl.LightningModule):
-    def __init__(
-        self,
-        model: pl.LightningModule,
-        epoch: int,
-        batch_size: int,
-        data_dir: str = data_dir,
-        seed: int = 42,
-    ):
+    def __init__(self,cfg: DictConfig):
         super().__init__()
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.epoch = epoch
-        # model
-        self.dm = AWKDDataModule(batch_size=batch_size, data_dir=data_dir)
-        self.model = model.to(device)
-        torch_fix_seed(seed)
+        torch_fix_seed(cfg.seed)
 
-        """
-        log.info(f"Instantiating datamodule <{cfg.datamodule._target_}>")
-        datamodule: LightningDataModule = hydra.utils.instantiate(cfg.datamodule)
+        logging.info(f"Instantiating datamodule <{cfg.datamodule._target_}>")
+        self.dm: pl.LightningDataModule = hydra.utils.instantiate(
+            cfg.datamodule,
+            data_dir= root / "data/AKWF_44k1_600s",
+            )
 
-        log.info(f"Instantiating model <{cfg.model._target_}>")
-        model: LightningModule = hydra.utils.instantiate(cfg.model)
+        logging.info(f"Instantiating model <{cfg.model._target_}>")
+        self.model: pl.LightningModule = hydra.utils.instantiate(cfg.model)
 
-        # log.info("Instantiating callbacks...")
-        # callbacks: List[Callback] = utils.instantiate_callbacks(cfg.get("callbacks"))
+        logging.info("Instantiating loggers...")
+        logger: List[pl.LightningLoggerBase] = hydra.utils.instantiate(cfg.logger)
 
-        log.info("Instantiating loggers...")
-        logger: List[LightningLoggerBase] = utils.instantiate_loggers(cfg.get("logger"))
-
-        log.info(f"Instantiating trainer <{cfg.trainer._target_}>")
-        trainer: Trainer = hydra.utils.instantiate(cfg.trainer, callbacks=callbacks, logger=logger)
-
-
-        """
+        logging.info("Instantiating callbacks...")
+        callbacks: pl.callbacks.Callback = hydra.utils.instantiate(cfg.callbacks)
 
         print(f"Device: {device}")
         if device == "cuda":
@@ -107,22 +93,16 @@ class TrainerWT(pl.LightningModule):
         else:
             raise ValueError("device must be 'cuda' or 'cpu'")
 
-        logger = WandbLogger(project='WavetableVAE', log_model=True)
-        # Trainer
-        self.trainer = pl.Trainer(
-            max_epochs=epoch,
-            # deterministic=True,
-            enable_checkpointing=True,
-            # log_every_n_steps=1,
-            callbacks=[MyPrintingCallback()],
-            auto_lr_find=True,
-            auto_scale_batch_size=True,
+        logging.info(f"Instantiating trainer <{cfg.trainer._target_}>")
+        self.trainer: Trainer = hydra.utils.instantiate(
+            cfg.trainer,
+            callbacks=callbacks,
             accelerator=accelerator,
             devices=devices,
             logger=logger,
-        )
+            )
 
-    def train(self, resume: bool = False):
+    def train(self, resume):
 
         print("Training...")
 
@@ -156,36 +136,22 @@ class TrainerWT(pl.LightningModule):
 @hydra.main(version_base=None, config_path="../conf", config_name="config")
 def main(cfg: DictConfig) -> None:
 
-
-
     if cfg.debug_mode is True:
+        subprocess.run('wandb off', shell=True)
         logger_level = logging.DEBUG
         setup_logger(logger_level=logger_level)
-        cfg.trainer.epoch = 1
-        # subprocess.run('wandb')
+        cfg.trainer.max_epochs = 1
     else:
         logger_level = logging.WARNING
         logger.setLevel(logger_level)
+        subprocess.run('wandb on', shell=True)
 
     # logger.info(f"Config: {cfg.pretty()}")
-    trainerWT = TrainerWT(
-        model=LitCVAE(
-            enc_cond_layer = cfg.model.enc_cond_layer,
-            dec_cond_layer = cfg.model.dec_cond_layer,
-            sample_points = cfg.model.sample_points,
-            sr = cfg.model.sample_rate,
-            lr = cfg.model.lr,
-            duplicate_num = cfg.model.duplicate_num,
-            latent_dim = cfg.model.latent_dim,
-            ),
-        epoch = cfg.trainer.epoch,
-        batch_size=cfg.datamodule.batch_size,
-        data_dir=data_dir,
-        seed=cfg.seed,
-    )
+    trainerWT = TrainerWT(cfg)
     # 学習
     trainerWT.train(resume=cfg.resume)
-    if cfg.save:
+    if cfg.save is not None:
+        print("save model")
         trainerWT.save_model(comment=cfg.save)
     trainerWT.test()
 

@@ -1,0 +1,2 @@
+[2023-01-09 13:26:37,273][unit_test][INFO] - Generation start!
+[2023-01-09 13:26:38,133][root][INFO] - Instantiating datamodule <src.dataio.akwd_datamodule.AWKDDataModule>

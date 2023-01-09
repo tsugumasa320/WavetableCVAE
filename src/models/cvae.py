@@ -27,7 +27,7 @@ class LitCVAE(pl.LightningModule):
         enc_cond_layer: list,
         dec_cond_layer: list,
         sample_points: int = 600,
-        sr :int = 44100,
+        sample_rate :int = 44100,
         lr: float = 1e-5,
         duplicate_num:int = 6,
         latent_dim: int = 128,
@@ -45,7 +45,7 @@ class LitCVAE(pl.LightningModule):
         self.encoder = Encoder(cond_layer=enc_cond_layer, cond_ch=9, latent_dim=latent_dim)
         self.decoder = Decoder(cond_layer=dec_cond_layer, cond_ch=9, latent_dim=latent_dim)
 
-        self.loudness = submodule.Loudness(sr, block_size=sample_points * duplicate_num, n_fft=sample_points * duplicate_num)
+        self.loudness = submodule.Loudness(sample_rate, block_size=sample_points * duplicate_num, n_fft=sample_points * duplicate_num)
         self.distance = submodule.Distance(scales=[sample_points * duplicate_num], overlap=0)
 
         """
