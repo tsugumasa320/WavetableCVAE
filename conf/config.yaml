@@ -2,9 +2,9 @@
 
 hydra:
   run:
-    dir: ./outputs/${model._target_}/${now:%Y%m%d}T${now:%H%M%S}-${trainer.epoch}
+    dir: ./log/hydra/${model._target_}/${now:%Y%m%d}T${now:%H%M%S}-${trainer.epoch}epoch
   sweep:
-    dir: ./outputs/${model._target_}/${now:%Y%m%d}T${now:%H%M%S}-${trainer.epoch}
+    dir: ./log/hydra/${model._target_}/${now:%Y%m%d}T${now:%H%M%S}-${trainer.epoch}epoch
 
 model:
   _target_: "LitCVAE"
@@ -22,7 +22,7 @@ datamodule:
   data_dir: root / "data/AKWF_44k1_600s"
 
 logger:
-  _target_: WandbLogger
+  _target_: "WandbLogger"
   project: 'WavetableVAE'
   log_model: True)
 
@@ -37,6 +37,4 @@ resume: null
 # "/workspace/My-reserch-project/WavetableVAE/28tspm6i/checkpoints/epoch=1431-step=141768.ckpt"
 save: "-ess-yeojohnson-dec1000"
 seed: 42
-experiment_name: "Wavetable-VAE"
-savename: "Wavetable-VAE"
 debug_mode: False

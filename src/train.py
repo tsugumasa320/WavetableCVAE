@@ -2,7 +2,7 @@ import logging
 import os
 
 import hydra
-import mlflow
+import wandb
 import pyrootutils
 import pytorch_lightning as pl
 import torch
@@ -136,6 +136,7 @@ class TrainerWT(pl.LightningModule):
 
     def save_model(self, comment=""):
         save_path = root / "torchscript"
+        # save_path = wandb.run.dir
         model_save(
             self.model,
             self.trainer,
@@ -155,12 +156,16 @@ class TrainerWT(pl.LightningModule):
 @hydra.main(version_base=None, config_path="../conf", config_name="config")
 def main(cfg: DictConfig) -> None:
 
+
+
     if cfg.debug_mode is True:
         logger_level = logging.DEBUG
         setup_logger(logger_level=logger_level)
         cfg.trainer.epoch = 1
         # subprocess.run('wandb')
-
+    else:
+        logger_level = logging.WARNING
+        logger.setLevel(logger_level)
 
     # logger.info(f"Config: {cfg.pretty()}")
     trainerWT = TrainerWT(

@@ -405,7 +405,7 @@ def yeojonson_for_WT(list, label_name: str, sett):
 
 if __name__ == "__main__":
 
-    ckpt_path = "2023-01-08-16:12:05.718043-LitCVAE-10000epoch-ess-yeojohnson-dec1000.ckpt"
+    ckpt_path = "2023-01-09-10:28:32.436987-LitCVAE-3000epoch-ess-yeojohnson-dec1000.ckpt"
     featureExatractorInit = FeatureExatractorInit(ckpt_path = ckpt_path,)
     featureExatractorInit.plot_condition_results(
         mode="cond",  # latent or cond

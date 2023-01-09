@@ -246,7 +246,7 @@ if __name__ == "__main__":
         "HNR": None,
     }
 
-    ckpt_path = "2023-01-08-16:12:05.718043-LitCVAE-10000epoch-ess-yeojohnson-dec1000.ckpt"
+    ckpt_path = "2023-01-09-10:28:32.436987-LitCVAE-3000epoch-ess-yeojohnson-dec1000.ckpt"
 
     visualize = Visualize(ckpt_path=ckpt_path)
     # visualize.z2wav()

@@ -10,7 +10,6 @@ import logging
 logger = logging.getLogger("unit_test").getChild("sub")
 
 from src.dataio import akwd_dataset
-
 from src.models.components import submodule
 
 root = pyrootutils.setup_root(
@@ -319,8 +318,8 @@ class LitCVAE(pl.LightningModule):
                 tmp = scw
             else:
                 tmp = torch.cat([tmp, scw])
-        x = tmp.reshape(1, -1)  # ex: [3600] -> [1,3600]
-        return x
+        tmp = tmp.reshape(1, -1)  # ex: [3600] -> [1,3600]
+        return tmp
 
     def _prepare_batch(
         self, batch: tuple
@@ -389,17 +388,17 @@ class Base(nn.Module):
         x = torch.cat([x, Complex_y.permute(2, 1, 0)], dim=1).to(torch.float32)
         x = torch.cat([x, OddEven_y.permute(2, 1, 0)], dim=1).to(torch.float32)
         x = torch.cat([x, Dissonance_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-        x = torch.cat([x, PitchSalience_y.permute(2, 1, 0)], dim=1).to(
-            torch.float32
-        )
+        x = torch.cat([x, PitchSalience_y.permute(2, 1, 0)], dim=1).to(torch.float32)
         x = torch.cat([x, Hnr_y.permute(2, 1, 0)], dim=1).to(torch.float32)
+
+        # del入れる?
 
         return x
 
 
 class Encoder(Base):
 
-    def __init__(self, cond_layer: list = [False, False, False, False], cond_ch: int = 9, latent_dim: int = 128):
+    def __init__(self, cond_layer: list, cond_ch: int = 9, latent_dim: int = 128):
 
         super().__init__()
 
@@ -475,7 +474,7 @@ class Encoder(Base):
 
 class Decoder(Base):
 
-    def __init__(self, cond_layer: list = [True, True, True, True], cond_ch: int = 9, latent_dim: int = 128):
+    def __init__(self, cond_layer: list, cond_ch: int = 9, latent_dim: int = 128):
 
         super().__init__()
 
