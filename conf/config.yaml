@@ -29,7 +29,7 @@ logger:
   id: null # pass correct id to resume experiment!
   anonymous: null # enable anonymous logging
   project: 'WavetableVAE'
-  log_model: True # upload lightning ckpts
+  log_model: False # upload lightning ckpts
   prefix: "" # a string to put at the beginning of metric keys
   # entity: "" # set to name of your wandb team
   group: ""
@@ -46,8 +46,7 @@ trainer:
 callbacks:
   _target_: "src.models.components.callback.MyPrintingCallback"
 
-resume: null
-# "/workspace/My-reserch-project/WavetableVAE/28tspm6i/checkpoints/epoch=1431-step=141768.ckpt"
+resume: "/home/yutani/workspace/My-reserch-project/WavetableVAE/2o6cz4lm/checkpoints/epoch=999-step=99000.ckpt"
 save: null
 seed: 42
 debug_mode: False

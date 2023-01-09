@@ -78,12 +78,13 @@ class Loudness(nn.Module):
         self.block_size = block_size
         self.n_fft = n_fft
 
+        """
         f = np.linspace(0, sr / 2, n_fft // 2 + 1) + 1e-7
         # z_weight = librosa.frequency_weighting(f,"Z").reshape(-1, 1)
         a_weight = librosa.A_weighting(f).reshape(-1, 1)
-
         self.register_buffer("a_weight", torch.from_numpy(a_weight).float())
         self.register_buffer("window", torch.hann_window(self.n_fft))
+        """
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = torch.stft(
@@ -95,7 +96,7 @@ class Loudness(nn.Module):
             window=None, # self.window,
             return_complex=True,
         ).abs()
-        x = torch.log(x + 1e-7) + self.a_weight
+        x = torch.log(x + 1e-7) # + self.a_weight
         return torch.mean(x, 1, keepdim=True)
 
 

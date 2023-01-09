@@ -152,9 +152,9 @@ def main(cfg: DictConfig) -> None:
     trainerWT = TrainerWT(cfg)
     # 学習
     trainerWT.train(resume=cfg.resume)
-    if cfg.save is not None:
+    if cfg.save == True:
         print("save model")
-        trainerWT.save_model(comment=cfg.save)
+        trainerWT.save_model(comment=wandb.run.dir)
     trainerWT.test()
 
 
