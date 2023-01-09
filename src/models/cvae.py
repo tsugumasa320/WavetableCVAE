@@ -26,6 +26,8 @@ class LitCVAE(pl.LightningModule):
         self,
         enc_cond_layer: list,
         dec_cond_layer: list,
+        enc_channels :list,
+        dec_channels :list,
         sample_points: int = 600,
         sample_rate :int = 44100,
         lr: float = 1e-5,
@@ -42,8 +44,8 @@ class LitCVAE(pl.LightningModule):
         self.duplicate_num = duplicate_num
         self.lr = lr
 
-        self.encoder = Encoder(cond_layer=enc_cond_layer, cond_ch=9, latent_dim=latent_dim)
-        self.decoder = Decoder(cond_layer=dec_cond_layer, cond_ch=9, latent_dim=latent_dim)
+        self.encoder = Encoder(cond_layer=enc_cond_layer, channels=enc_channels , cond_ch=9, latent_dim=latent_dim)
+        self.decoder = Decoder(cond_layer=dec_cond_layer, channels=dec_channels , cond_ch=9, latent_dim=latent_dim)
 
         self.loudness = submodule.Loudness(sample_rate, block_size=sample_points * duplicate_num, n_fft=sample_points * duplicate_num)
         self.distance = submodule.Distance(scales=[sample_points * duplicate_num], overlap=0)
@@ -289,7 +291,7 @@ class LitCVAE(pl.LightningModule):
         # self.log(f"{stage}_wave_loss", wave_loss, on_step=True, on_epoch=True)
         self.log(f"{stage}_kl_loss", kl_loss, on_step=True, on_epoch=True)
         self.log(
-            f"{stage}_spec_loss", spec_loss, on_step=True, on_epoch=True,
+            f"{stage}_spec_loss", spec_loss, on_step=True, on_epoch=True
             )
         self.log(
             f"{stage}_loss", self.loss, on_step=True, on_epoch=True, prog_bar=True
@@ -398,50 +400,57 @@ class Base(nn.Module):
 
 class Encoder(Base):
 
-    def __init__(self, cond_layer: list, cond_ch: int = 9, latent_dim: int = 128):
+    def __init__(
+        self,
+        cond_layer: list,
+        channels:list = [64, 128, 256, 512],
+        cond_ch: int = 9,
+        latent_dim: int = 128
+        ):
 
         super().__init__()
+
 
         self.cond_layer = cond_layer
         self.conv0 = nn.Sequential(
             nn.Conv1d(
-                in_channels=1 + cond_ch if cond_layer[0] is True else 1,
-                out_channels=64, kernel_size=9, stride=1, padding=0
+                in_channels= 1 + cond_ch if cond_layer[0] is True else 1,
+                out_channels=channels[0], kernel_size=9, stride=1, padding=0
             ),
             nn.LeakyReLU(),
-            nn.BatchNorm1d(64),
+            nn.BatchNorm1d(channels[0]),
         )
         self.conv1 = nn.Sequential(
             nn.Conv1d(
-                in_channels=64 + cond_ch if cond_layer[1] is True else 64,
-                out_channels=128, kernel_size=9, stride=1, padding=0
+                in_channels=channels[0] + cond_ch if cond_layer[1] is True else channels[0],
+                out_channels=channels[1], kernel_size=9, stride=1, padding=0
             ),
             nn.LeakyReLU(),
-            nn.BatchNorm1d(128),
+            nn.BatchNorm1d(channels[1]),
         )
         self.conv2 = nn.Sequential(
 
             nn.Conv1d(
-                in_channels=128 + cond_ch if cond_layer[2] is True else 128,
-                out_channels=256, kernel_size=9, stride=2, padding=0
+                in_channels=channels[1] + cond_ch if cond_layer[2] is True else channels[1],
+                out_channels=channels[2], kernel_size=9, stride=2, padding=0
             ),
             nn.LeakyReLU(),
-            nn.BatchNorm1d(256),
+            nn.BatchNorm1d(channels[2]),
         )
         self.conv3 = nn.Sequential(
             nn.Conv1d(
-                in_channels=256 + cond_ch if cond_layer[3] is True else 256,
-                out_channels=512, kernel_size=9, stride=2, padding=0
+                in_channels=channels[2] + cond_ch if cond_layer[3] is True else channels[2],
+                out_channels=channels[3], kernel_size=9, stride=2, padding=0
             ),
             nn.LeakyReLU(),
-            nn.BatchNorm1d(512),
+            nn.BatchNorm1d(channels[3]),
         )
 
         self.hidden2mu = nn.Conv1d(
-            in_channels=512, out_channels=latent_dim, kernel_size=1, stride=1, padding=0
+            in_channels=channels[3], out_channels=latent_dim, kernel_size=1, stride=1, padding=0
         )
         self.hidden2log_var = nn.Conv1d(
-            in_channels=512, out_channels=latent_dim, kernel_size=1, stride=1, padding=0
+            in_channels=channels[3], out_channels=latent_dim, kernel_size=1, stride=1, padding=0
         )
 
     def forward(self, x, attrs):
@@ -474,7 +483,13 @@ class Encoder(Base):
 
 class Decoder(Base):
 
-    def __init__(self, cond_layer: list, cond_ch: int = 9, latent_dim: int = 128):
+    def __init__(
+        self,
+        cond_layer: list,
+        channels: list=[64, 32, 16, 8],
+        cond_ch: int = 9,
+        latent_dim: int = 128
+        ):
 
         super().__init__()
 
@@ -482,37 +497,37 @@ class Decoder(Base):
         self.deconv0 = nn.Sequential(
             submodule.UpSampling(
                 in_channels=latent_dim + cond_ch if cond_layer[0] is True else latent_dim,
-                out_channels=64, kernel_size=8, stride=2
+                out_channels=channels[0], kernel_size=8, stride=2
             ),
-            submodule.ResBlock(64, 3),
+            submodule.ResBlock(channels[0], 3),
         )
 
         self.deconv1 = nn.Sequential(
             submodule.UpSampling(
-                in_channels=64 + cond_ch if cond_layer[1] is True else 64,
-                out_channels=32, kernel_size=8, stride=1
+                in_channels=channels[0] + cond_ch if cond_layer[1] is True else channels[0],
+                out_channels=channels[1], kernel_size=8, stride=1
             ),
-            submodule.ResBlock(32, 3),
+            submodule.ResBlock(channels[1], 3),
         )
 
         self.deconv2 = nn.Sequential(
             submodule.UpSampling(
-                in_channels=32 + cond_ch if cond_layer[2] is True else 32,
-                out_channels=16, kernel_size=8, stride=2
+                in_channels=channels[1] + cond_ch if cond_layer[2] is True else channels[1],
+                out_channels=channels[2], kernel_size=8, stride=2
             ),
-            submodule.ResBlock(16, 3),
+            submodule.ResBlock(channels[2], 3),
         )
 
         self.deconv3 = nn.Sequential(
             submodule.UpSampling(
-                in_channels=16 + cond_ch if cond_layer[3] is True else 16,
-                out_channels=8, kernel_size=9, stride=1
+                in_channels=channels[2] + cond_ch if cond_layer[3] is True else channels[2],
+                out_channels=channels[3], kernel_size=9, stride=1
             ),
-            submodule.ResBlock(8, 3),
+            submodule.ResBlock(channels[3], 3),
         )
 
         self.convout = nn.Sequential(
-            submodule.ConvOut(in_channels=8, out_channels=1, kernel_size=1, stride=1),
+            submodule.ConvOut(in_channels=channels[3], out_channels=1, kernel_size=1, stride=1),
         )
 
     def forward(self, x, attrs):

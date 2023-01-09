@@ -38,7 +38,7 @@ class AWKDDataModule(pl.LightningDataModule):
 
     def train_dataloader(self):  # Train用DataLoaderの設定
         return torch.utils.data.DataLoader(
-            self.train_dataset, batch_size=self.batch_size
+            self.train_dataset, batch_size=self.batch_size, num_workers=os.cpu_count()
         )
 
     def val_dataloader(self):  # val用DataLoaderの設定
