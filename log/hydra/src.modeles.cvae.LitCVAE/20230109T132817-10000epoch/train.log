@@ -1,3 +1,0 @@
-[2023-01-09 13:28:17,866][unit_test][INFO] - Generation start!
-[2023-01-09 13:28:18,736][root][INFO] - Instantiating datamodule <src.dataio.akwd_datamodule.AWKDDataModule>
-[2023-01-09 13:28:18,795][root][INFO] - Instantiating model <src.modeles.cvae.LitCVAE>

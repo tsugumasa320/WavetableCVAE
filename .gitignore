@@ -18,6 +18,9 @@ build/
 AKWF_44k1_600s/
 AKWF_16k_80s/
 outputs/
+log/
+WavetableCVAE/
+
 
 *.out
 nohup.out
