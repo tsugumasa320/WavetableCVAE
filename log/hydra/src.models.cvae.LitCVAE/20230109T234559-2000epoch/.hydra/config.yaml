@@ -1,0 +1,54 @@
+model:
+  _target_: src.models.cvae.LitCVAE
+  enc_cond_layer:
+  - true
+  - true
+  - true
+  - true
+  dec_cond_layer:
+  - true
+  - true
+  - true
+  - true
+  enc_channels:
+  - 64
+  - 128
+  - 256
+  - 512
+  latent_dim: 256
+  dec_channels:
+  - 128
+  - 64
+  - 32
+  - 16
+  duplicate_num: 6
+  sample_points: 600
+  sample_rate: 44100
+  lr: 1.0e-05
+datamodule:
+  _target_: src.dataio.akwd_datamodule.AWKDDataModule
+  batch_size: 32
+logger:
+  _target_: pytorch_lightning.loggers.wandb.WandbLogger
+  save_dir: null
+  offline: false
+  id: null
+  anonymous: null
+  project: WavetableVAE
+  log_model: false
+  prefix: ''
+  group: ''
+  tags: []
+  job_type: ''
+trainer:
+  _target_: pytorch_lightning.Trainer
+  max_epochs: 2000
+  enable_checkpointing: true
+  auto_lr_find: true
+  auto_scale_batch_size: true
+callbacks:
+  _target_: src.models.components.callback.MyPrintingCallback
+resume: null
+save: null
+seed: 42
+debug_mode: true

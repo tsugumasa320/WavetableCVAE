@@ -1,0 +1,22 @@
+[2023-01-10 01:15:31,876][unit_test][INFO] - Generation start!
+[2023-01-10 01:15:31,877][root][INFO] - Instantiating datamodule <src.dataio.akwd_datamodule.AWKDDataModule>
+[2023-01-10 01:15:31,934][root][INFO] - Instantiating model <src.models.cvae.LitCVAE>
+[2023-01-10 01:15:31,955][root][INFO] - Instantiating loggers...
+[2023-01-10 01:15:38,068][root][INFO] - Instantiating callbacks...
+[2023-01-10 01:15:38,073][root][INFO] - Instantiating trainer <pytorch_lightning.Trainer>
+[2023-01-10 01:15:41,643][unit_test.sub][INFO] - Encoder: conditioning[0]
+[2023-01-10 01:15:42,842][unit_test.sub][INFO] - Encoder: conditioning[1]
+[2023-01-10 01:15:42,844][unit_test.sub][INFO] - Encoder: conditioning[2]
+[2023-01-10 01:15:42,846][unit_test.sub][INFO] - Encoder: conditioning[3]
+[2023-01-10 01:15:42,848][unit_test.sub][INFO] - Decoder: conditioning[0]
+[2023-01-10 01:15:42,850][unit_test.sub][INFO] - Decoder: conditioning[1]
+[2023-01-10 01:15:42,852][unit_test.sub][INFO] - Decoder: conditioning[2]
+[2023-01-10 01:15:42,854][unit_test.sub][INFO] - Decoder: conditioning[3]
+[2023-01-10 01:15:43,003][unit_test.sub][INFO] - Encoder: conditioning[0]
+[2023-01-10 01:15:43,005][unit_test.sub][INFO] - Encoder: conditioning[1]
+[2023-01-10 01:15:43,006][unit_test.sub][INFO] - Encoder: conditioning[2]
+[2023-01-10 01:15:43,007][unit_test.sub][INFO] - Encoder: conditioning[3]
+[2023-01-10 01:15:43,009][unit_test.sub][INFO] - Decoder: conditioning[0]
+[2023-01-10 01:15:43,011][unit_test.sub][INFO] - Decoder: conditioning[1]
+[2023-01-10 01:15:43,012][unit_test.sub][INFO] - Decoder: conditioning[2]
+[2023-01-10 01:15:43,014][unit_test.sub][INFO] - Decoder: conditioning[3]

@@ -38,6 +38,47 @@ class MyPrintingCallback(pl.callbacks.Callback):
     def __init__(self):
         super().__init__()
 
+    def on_validation_batch_end(
+        self, trainer, model, outputs, batch, batch_idx, dataloader_idx):
+        """Called when the validation batch ends."""
+
+        if model.current_epoch % 1000  == 0 and model.current_epoch / 1000 > 1:
+            print("Visualizing")
+            visualize = Visualize(model)
+            visualize.plot_gridspectrum(latent_op=None,show=False,save_path=None)
+            visualize.plot_gridwaveform(latent_op=None,show=False,save_path=None)
+
+            print("FeatureExatractor")
+            featureExatractorInit = FeatureExatractorInit(model)
+            featureExatractorInit.plot_condition_results(
+                mode="cond",  # latent or cond
+                dm_num=6,
+                resolution_num=100,
+                bias=1,
+                save_name= None,
+            )
+
+        """
+        # `outputs` comes from `LightningModule.validation_step`
+        # which corresponds to our model predictions in this case
+        if pl_module.current_epoch // 1 == 0:
+            # Let's log 20 sample image predictions from first batch
+            if batch_idx == 0:
+                n = 20
+                visualize = Visualize(pl_module)
+                x, attrs = batch
+                eval_x = visualize.model_eval(x, attrs)
+
+                for i in range(n):
+
+                    # Log image to wandb
+                    plt.plot(x[i].cpu(), label="original")
+                    plt.plot(eval_x[i].cpu(), label="eval")
+                    # plt.suptitle("waveform : " + attrs[i]["name"])
+                    # plt.show()
+                    wandb.log({"waveform : " + str(i): plt})
+        """
+
     def on_train_start(self, trainer: pl.Trainer, model: pl.LightningModule):
         print("Training is starting")
 
@@ -45,7 +86,7 @@ class MyPrintingCallback(pl.callbacks.Callback):
 
         # Todo: 学習時にここのコメントを設定できるようにする
         on_train_end_notification(model, comment="")
-
+        """
         print("Visualizing")
         visualize = Visualize(model)
         visualize.plot_gridspectrum(latent_op=None,show=False,save_path=None)
@@ -60,7 +101,7 @@ class MyPrintingCallback(pl.callbacks.Callback):
             bias=1,
             save_name= None,
         )
-
+        """
         print("Training is ending")
 
 def LINENotification(comment: str) -> None:

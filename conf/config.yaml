@@ -28,7 +28,7 @@ logger:
   offline: False
   id: null # pass correct id to resume experiment!
   anonymous: null # enable anonymous logging
-  project: 'WavetableVAE'
+  project: 'WavetableCVAE'
   log_model: False # upload lightning ckpts
   prefix: "" # a string to put at the beginning of metric keys
   # entity: "" # set to name of your wandb team
@@ -38,7 +38,7 @@ logger:
 
 trainer:
   _target_: pytorch_lightning.Trainer
-  max_epochs: 1000
+  max_epochs: 2500
   enable_checkpointing: True
   auto_lr_find: True
   auto_scale_batch_size: True
@@ -46,7 +46,7 @@ trainer:
 callbacks:
   _target_: "src.models.components.callback.MyPrintingCallback"
 
-resume: "/home/yutani/workspace/My-reserch-project/WavetableVAE/2o6cz4lm/checkpoints/epoch=999-step=99000.ckpt"
+resume: null #"/workspace/My-reserch-project/WavetableVAE/2o6cz4lm/checkpoints/epoch=999-step=99000.ckpt"
 save: null
 seed: 42
 debug_mode: False
