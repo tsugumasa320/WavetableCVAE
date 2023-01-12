@@ -38,11 +38,10 @@ class MyPrintingCallback(pl.callbacks.Callback):
     def __init__(self):
         super().__init__()
 
-    def on_validation_batch_end(
-        self, trainer, model, outputs, batch, batch_idx, dataloader_idx):
-        """Called when the validation batch ends."""
+    def on_validation_epoch_end(self, trainer, model):
+        """Called when the validation epoch ends."""
 
-        if model.current_epoch % 1000  == 0 and model.current_epoch / 1000 > 1:
+        if model.current_epoch % 1000  == 0 and model.current_epoch / 1000 > 0:
             print("Visualizing")
             visualize = Visualize(model)
             visualize.plot_gridspectrum(latent_op=None,show=False,save_path=None)
@@ -57,27 +56,6 @@ class MyPrintingCallback(pl.callbacks.Callback):
                 bias=1,
                 save_name= None,
             )
-
-        """
-        # `outputs` comes from `LightningModule.validation_step`
-        # which corresponds to our model predictions in this case
-        if pl_module.current_epoch // 1 == 0:
-            # Let's log 20 sample image predictions from first batch
-            if batch_idx == 0:
-                n = 20
-                visualize = Visualize(pl_module)
-                x, attrs = batch
-                eval_x = visualize.model_eval(x, attrs)
-
-                for i in range(n):
-
-                    # Log image to wandb
-                    plt.plot(x[i].cpu(), label="original")
-                    plt.plot(eval_x[i].cpu(), label="eval")
-                    # plt.suptitle("waveform : " + attrs[i]["name"])
-                    # plt.show()
-                    wandb.log({"waveform : " + str(i): plt})
-        """
 
     def on_train_start(self, trainer: pl.Trainer, model: pl.LightningModule):
         print("Training is starting")

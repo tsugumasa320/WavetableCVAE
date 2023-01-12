@@ -28,6 +28,7 @@ class LitCVAE(pl.LightningModule):
         dec_cond_layer: list,
         enc_channels :list,
         dec_channels :list,
+        beta :int = 0.1,
         sample_points: int = 600,
         sample_rate :int = 44100,
         lr: float = 1e-5,
@@ -40,6 +41,7 @@ class LitCVAE(pl.LightningModule):
         # save hyper-parameters to self.hparams (auto-logged by W&B)
         self.save_hyperparameters()
 
+        self.beta = beta
         self.sample_points = sample_points
         self.duplicate_num = duplicate_num
         self.lr = lr
@@ -281,12 +283,11 @@ class LitCVAE(pl.LightningModule):
         kl_loss = kl_loss.mean()
 
         # alpha = self.current_epoch / 10000 # self.trainer.max_epochs
-        beta = 0.01
         #beta = self.current_epoch / 10000 # self.trainer.max_epochs
 
         # self.log("alpha", alpha, on_step=True, on_epoch=False)
-        self.loss = spec_loss + (beta*kl_loss) + self.loud_dist
-        self.log("beta", beta, on_step=True, on_epoch=True)
+        self.loss = spec_loss + (self.beta*kl_loss) + self.loud_dist  # + wave_loss
+        self.log("beta", self.beta, on_step=True, on_epoch=True)
         self.log(f"{stage}_loud_dist", self.loud_dist, on_step=True, on_epoch=True)
         # self.log(f"{stage}_wave_loss", wave_loss, on_step=True, on_epoch=True)
         self.log(f"{stage}_kl_loss", kl_loss, on_step=True, on_epoch=True)

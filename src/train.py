@@ -62,6 +62,7 @@ def setup_logger(logger_level: int = logging.INFO):
 class TrainerWT(pl.LightningModule):
     def __init__(self,cfg: DictConfig):
         super().__init__()
+        self.cfg = cfg
         device = "cuda" if torch.cuda.is_available() else "cpu"
         torch_fix_seed(cfg.seed)
 
@@ -121,7 +122,7 @@ class TrainerWT(pl.LightningModule):
             self.model,
             self.trainer,
             save_path,
-            comment=str(self.epoch) + "epoch" + comment,
+            comment=str(self.cfg.trainer.max_epochs) + "epoch" + comment,
         )
 
     def test(self):
@@ -137,12 +138,12 @@ class TrainerWT(pl.LightningModule):
 def main(cfg: DictConfig) -> None:
 
     if cfg.debug_mode is True:
-        # subprocess.run('wandb off', shell=True)
+        subprocess.run('wandb off', shell=True)
         logger_level = logging.DEBUG
         setup_logger(logger_level=logger_level)
         cfg.trainer.max_epochs = 1
         cfg.logger.log_model = False
-        # cfg.logger.offline = True
+        cfg.logger.offline = True
         # cfg.callbacks = None
     else:
         logger_level = logging.WARNING

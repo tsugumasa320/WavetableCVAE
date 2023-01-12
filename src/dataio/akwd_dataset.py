@@ -76,7 +76,9 @@ class AKWDDataset(torch.utils.data.Dataset):
             UNPACK_PATH = os.path.join(cwd, "data")
             DOWNLOAD_PATH = os.path.join(UNPACK_PATH, DOWNLOAD_NAME)
             # ID = "1-IZokWDA4d1Q0ZsWzs4gT1pyI6zD2BrU" #ess_minmax
-            ID = "1-GYT1gFf-bmiUWMCamydHF-h6D83AzTo"  # ess_yeojohnson
+            # ID = "1-GYT1gFf-bmiUWMCamydHF-h6D83AzTo"  # ess_yeojohnson
+            ID = "1Bpos6HJp6IHJYIkJ0rrXhydyeiA7gREO"  # ess_yeojohnson*DCO
+
             URL = "https://drive.google.com/uc?id=" + ID
 
             # if os.path.exists(os.path.join(cwd, DOWNLOAD_NAME)):
