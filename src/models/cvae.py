@@ -46,8 +46,8 @@ class LitCVAE(pl.LightningModule):
         self.duplicate_num = duplicate_num
         self.lr = lr
 
-        self.encoder = Encoder(cond_layer=enc_cond_layer, channels=enc_channels , cond_ch=9, latent_dim=latent_dim)
-        self.decoder = Decoder(cond_layer=dec_cond_layer, channels=dec_channels , cond_ch=9, latent_dim=latent_dim)
+        self.encoder = Encoder(cond_layer=enc_cond_layer, channels=enc_channels , cond_ch=5, latent_dim=latent_dim)
+        self.decoder = Decoder(cond_layer=dec_cond_layer, channels=dec_channels , cond_ch=5, latent_dim=latent_dim)
 
         self.loudness = submodule.Loudness(sample_rate, block_size=sample_points * duplicate_num, n_fft=sample_points * duplicate_num)
         self.distance = submodule.Distance(scales=[sample_points * duplicate_num], overlap=0)
@@ -353,6 +353,7 @@ class Base(nn.Module):
         # rough = torch.tensor(attrs["roughness"]/100)
         # depth = torch.tensor(attrs["depth"]/100)
 
+        """
         Centroid = torch.tensor(attrs["SpectralCentroid"])
         Spread = torch.tensor(attrs["SpectralSpread"])
         Kurtosis = torch.tensor(attrs["SpectralKurtosis"])
@@ -395,6 +396,29 @@ class Base(nn.Module):
         x = torch.cat([x, Hnr_y.permute(2, 1, 0)], dim=1).to(torch.float32)
 
         # del入れる?
+        """
+
+        brightness = torch.tensor(attrs["dco_brightness"])
+        ritchness = torch.tensor(attrs["dco_richness"])
+        flatness = torch.tensor(attrs["dco_flatness"])
+        oddenergy = torch.tensor(attrs["dco_oddenergy"])
+        zcr = torch.tensor(attrs["dco_zcr"])
+
+        y = torch.ones([x.shape[0], 1, x.shape[2]]).permute(
+            2, 1, 0
+        )  # [600,1,32] or [140,256,32]
+
+        brightness_y = y.to(device) * brightness.to(device)
+        ritchness_y = y.to(device) * ritchness.to(device)
+        flatness_y = y.to(device) * flatness.to(device)
+        oddenergy_y = y.to(device) * oddenergy.to(device)
+        zcr_y = y.to(device) * zcr.to(device)
+
+        x = torch.cat([x, brightness_y.permute(2, 1, 0)], dim=1).to(torch.float32)
+        x = torch.cat([x, ritchness_y.permute(2, 1, 0)], dim=1).to(torch.float32)
+        x = torch.cat([x, flatness_y.permute(2, 1, 0)], dim=1).to(torch.float32)
+        x = torch.cat([x, oddenergy_y.permute(2, 1, 0)], dim=1).to(torch.float32)
+        x = torch.cat([x, zcr_y.permute(2, 1, 0)], dim=1).to(torch.float32)
 
         return x
 

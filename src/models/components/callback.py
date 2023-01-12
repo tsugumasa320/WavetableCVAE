@@ -49,12 +49,34 @@ class MyPrintingCallback(pl.callbacks.Callback):
 
             print("FeatureExatractor")
             featureExatractorInit = FeatureExatractorInit(model)
-            featureExatractorInit.plot_condition_results(
+
+            """
+            attrs_label = [
+                "SpectralCentroid",
+                "SpectralSpread",
+                "SpectralKurtosis",
+                "ZeroCrossingRate",
+                "OddToEvenHarmonicEnergyRatio",
+                "PitchSalience",
+                "HNR",
+            ]
+            """
+
+            attrs_label = [
+                "dco_brightness",
+                "dco_richness",
+                "dco_flatness",
+                "dco_oddenergy",
+                "dco_zcr",
+            ]
+
+            featureExatractorInit(
+                attrs_label=attrs_label,
                 mode="cond",  # latent or cond
                 dm_num=6,
                 resolution_num=100,
                 bias=1,
-                save_name= None,
+                save_name=None,
             )
 
     def on_train_start(self, trainer: pl.Trainer, model: pl.LightningModule):

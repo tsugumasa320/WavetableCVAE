@@ -144,7 +144,7 @@ def main(cfg: DictConfig) -> None:
         cfg.trainer.max_epochs = 1
         cfg.logger.log_model = False
         cfg.logger.offline = True
-        # cfg.callbacks = None
+        cfg.callbacks = None
     else:
         logger_level = logging.WARNING
         logger.setLevel(logger_level)

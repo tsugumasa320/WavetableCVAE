@@ -372,101 +372,6 @@ class FeatureExatractorInit(EvalModelInit):
 
         return est_data
 
-    def plot_condition_results(
-        self,
-        mode="cond",
-        dm_num: int = 15,
-        resolution_num: int = 10,
-        bias: int = 1,
-        save_name: str = "test",
-    ):
-
-        attrs_label = [
-            "SpectralCentroid",
-            "SpectralSpread",
-            "SpectralKurtosis",
-            "ZeroCrossingRate",
-            "OddToEvenHarmonicEnergyRatio",
-            "PitchSalience",
-            "HNR",
-        ]
-
-        fig, axes = plt.subplots(
-            dm_num, len(attrs_label) + 2, figsize=(30, 3 * dm_num), tight_layout=True
-        )
-        x = np.array(range(resolution_num + 1)) / resolution_num
-
-        CentroidMAE = 0
-        SpreadMAE = 0
-        KurtosisMAE = 0
-        ZeroXMAE = 0
-        OddMAE = 0
-        PsMAE = 0
-        HnrMAE = 0
-
-        for j in tqdm(range(dm_num)):
-            for i in range(len(attrs_label) + 2):
-
-                if i == 0:
-                    wavetable, attrs = self.dm.train_dataset[j]
-                    axes[j, i].plot(wavetable.squeeze(0))
-                    axes[j, i].set_title(attrs["name"])
-                    axes[j, i].grid(True)
-
-                elif i == 1:
-                    spectrum = self._scw_combain_spec(wavetable, 6)[0]
-                    axes[j, i].plot(spectrum.squeeze(0))
-                    axes[j, i].set_title("spectrum : " + attrs["name"])
-                    axes[j, i].grid(True)
-
-                else:
-                    target, estimate = self.CondOrLatentOperate(
-                        attrs_label[i - 2],
-                        normalize_method="yeojohnson",
-                        dm_num=j,
-                        resolution_num=resolution_num,
-                        bias=bias,
-                        mode=mode,
-                    )
-
-                    axes[j, i].set_title(attrs_label[i - 2])
-                    axes[j, i].grid(True)
-                    axes[j, i].plot(x, target, label="condition value")
-                    axes[j, i].plot(x, estimate, label="estimate value")
-                    axes[j, i].set_xlim(0, 1)
-                    axes[j, i].set_ylim(0, 1)
-                    axes[j, i].set_xlabel("input", size=10)
-                    axes[j, i].set_ylabel("output", size=10)
-                    axes[j, i].legend()
-
-                    if i == 2:
-                        CentroidMAE += np.mean(np.array(estimate) - np.array(target))
-                    elif i == 3:
-                        SpreadMAE += np.mean(np.array(estimate) - np.array(target))
-                    elif i == 4:
-                        KurtosisMAE += np.mean(np.array(estimate) - np.array(target))
-                    elif i == 5:
-                        ZeroXMAE += np.mean(np.array(estimate) - np.array(target))
-                    elif i == 6:
-                        OddMAE += np.mean(np.array(estimate) - np.array(target))
-                    elif i == 7:
-                        PsMAE += np.mean(np.array(estimate) - np.array(target))
-                    elif i == 8:
-                        HnrMAE += np.mean(np.array(estimate) - np.array(target))
-
-        print("CentroidMAE :", CentroidMAE)
-        print("SpreadMAE :", SpreadMAE)
-        print("KurtosisMAE :", KurtosisMAE)
-        print("ZeroXMAE :", ZeroXMAE)
-        print("OddMAE :", OddMAE)
-        print("PsMAE :", PsMAE)
-        print("HNRMAE :", HnrMAE)
-
-        if save_name is not None:
-            plt.savefig(save_name + ".png")
-        plt.show()
-        wandb.log({"AudioFeature": fig})
-
 # Preprocess
 
 def min_max_for_list(list, l_min, l_max):
@@ -600,3 +505,89 @@ def yeojonson_for_WT(list, label_name: str, sett):
     else:
         raise Exception("Error!")
     return list
+
+def __call__(
+    self,
+    attrs_label: list,
+    mode="cond",
+    dm_num: int = 15,
+    resolution_num: int = 10,
+    bias: int = 1,
+    save_name: str = "test",
+):
+
+    fig, axes = plt.subplots(
+        dm_num, len(attrs_label) + 2, figsize=(30, 3 * dm_num), tight_layout=True
+    )
+    x = np.array(range(resolution_num + 1)) / resolution_num
+
+    CentroidMAE = 0
+    SpreadMAE = 0
+    KurtosisMAE = 0
+    ZeroXMAE = 0
+    OddMAE = 0
+    PsMAE = 0
+    HnrMAE = 0
+
+    for j in tqdm(range(dm_num)):
+        for i in range(len(attrs_label) + 2):
+
+            if i == 0:
+                wavetable, attrs = self.dm.train_dataset[j]
+                axes[j, i].plot(wavetable.squeeze(0))
+                axes[j, i].set_title(attrs["name"])
+                axes[j, i].grid(True)
+
+            elif i == 1:
+                spectrum = self._scw_combain_spec(wavetable, 6)[0]
+                axes[j, i].plot(spectrum.squeeze(0))
+                axes[j, i].set_title("spectrum : " + attrs["name"])
+                axes[j, i].grid(True)
+
+            else:
+                target, estimate = self.CondOrLatentOperate(
+                    attrs_label[i - 2],
+                    normalize_method="yeojohnson",
+                    dm_num=j,
+                    resolution_num=resolution_num,
+                    bias=bias,
+                    mode=mode,
+                )
+
+                axes[j, i].set_title(attrs_label[i - 2])
+                axes[j, i].grid(True)
+                axes[j, i].plot(x, target, label="condition value")
+                axes[j, i].plot(x, estimate, label="estimate value")
+                axes[j, i].set_xlim(0, 1)
+                axes[j, i].set_ylim(0, 1)
+                axes[j, i].set_xlabel("input", size=10)
+                axes[j, i].set_ylabel("output", size=10)
+                axes[j, i].legend()
+
+                if i == 2:
+                    CentroidMAE += np.mean(np.array(estimate) - np.array(target))
+                elif i == 3:
+                    SpreadMAE += np.mean(np.array(estimate) - np.array(target))
+                elif i == 4:
+                    KurtosisMAE += np.mean(np.array(estimate) - np.array(target))
+                elif i == 5:
+                    ZeroXMAE += np.mean(np.array(estimate) - np.array(target))
+                elif i == 6:
+                    OddMAE += np.mean(np.array(estimate) - np.array(target))
+                elif i == 7:
+                    PsMAE += np.mean(np.array(estimate) - np.array(target))
+                elif i == 8:
+                    HnrMAE += np.mean(np.array(estimate) - np.array(target))
+
+    print("CentroidMAE :", CentroidMAE)
+    print("SpreadMAE :", SpreadMAE)
+    print("KurtosisMAE :", KurtosisMAE)
+    print("ZeroXMAE :", ZeroXMAE)
+    print("OddMAE :", OddMAE)
+    print("PsMAE :", PsMAE)
+    print("HNRMAE :", HnrMAE)
+
+    if save_name is not None:
+        plt.savefig(save_name + ".png")
+    plt.show()
+    wandb.log({"AudioFeature": fig})
