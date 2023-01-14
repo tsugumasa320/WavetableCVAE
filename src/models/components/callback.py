@@ -41,6 +41,10 @@ class MyPrintingCallback(pl.callbacks.Callback):
     def on_validation_epoch_end(self, trainer, model):
         """Called when the validation epoch ends."""
 
+        # Monotonic annealing
+        if model.beta < 1:
+            model.beta += 1 / 1000
+
         check_epoch = 1000
 
         if model.current_epoch % check_epoch == 0 and model.current_epoch / check_epoch > 0:

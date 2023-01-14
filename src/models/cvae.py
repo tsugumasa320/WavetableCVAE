@@ -294,8 +294,7 @@ class LitCVAE(pl.LightningModule):
         self.log(
             f"{stage}_loss", self.loss, on_step=True, on_epoch=True, prog_bar=True
         )
-        if self.beta < 1:
-            self.beta += 1 / 1000
+
         return self.loss
 
     def _scw_batch_proc(self, x: torch.Tensor) -> torch.Tensor:
