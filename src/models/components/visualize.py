@@ -245,7 +245,7 @@ class FeatureExatractorInit(EvalModelInit):
         self.pitchSalience = ess.PitchSalience()
         self.ess_spectrum = ess.Spectrum(size=3600)
 
-    def ytn_audio_exatractor(self, audio: torch.Tensor, attrs: dict):
+    def essentia_audio_exatractor(self, audio: torch.Tensor, attrs: dict):
 
         # 6つ繋げたWavetableを保存する
         torchaudio.save(filepath="tmp.wav", src=audio.to("cpu"), sample_rate=44100)
@@ -269,6 +269,52 @@ class FeatureExatractorInit(EvalModelInit):
         h = signal.get_HNR(ess_audio, attrs["samplerate"])
 
         return c, sp, k, z, sc, o, d, ps, h
+
+    def dco_extractFeatures(self, single_cycle: torch.Tensor, tile_num=15):
+
+        single_cycle = single_cycle.squeeze(0).cpu().numpy()
+        waveform_length=len(single_cycle)  # 320
+        N = waveform_length*tile_num
+        Nh = int(N/2)  # 2048
+        signal = np.tile(single_cycle, tile_num)  # 320*15=4800
+        # print("signal.shape", signal.shape)
+        signal = signal[:N]
+        # signal = signal * np.hanning(N)
+        spec = np.fft.fft(signal)
+        # パワースペクトラムを算出
+        spec_pow = np.real(spec * np.conj(spec) / N) # 複素数の実数部を返す
+        # np.conj(): 共役複素数 (複素共役, 虚数部の符号を逆にした複素数) を返す
+        spec_pow = spec_pow[0:Nh]
+
+        total = sum(spec_pow)
+        if (total == 0):
+            brightness = -1
+            richness = -1
+        else:
+            # linspaceで重みづけ
+            centroid = sum(spec_pow * np.linspace(0, 1, Nh)) / total
+            k = 5.5
+            brightness = np.log(centroid*(np.exp(k)-1)+1)/k
+
+            spread = np.sqrt(sum(spec_pow * np.square((np.linspace(0, 1, Nh)-centroid))) / total)
+            k = 7.5
+            richness = np.log(spread*(np.exp(k)-1)+1)/k
+
+            zero_crossing_rate = np.where(np.diff(np.sign(single_cycle)))[0].shape[0] / waveform_length
+            k = 5.5
+            noiseness = np.log(zero_crossing_rate*(np.exp(k)-1)+1)/k
+
+        # fullness
+        hf = N/waveform_length
+        hnumber = int(waveform_length/2)-1
+        all_harmonics = sum(spec_pow[np.rint(hf*np.linspace(1, hnumber, hnumber)).astype(int)])
+        odd_harmonics = sum(spec_pow[np.rint(hf*np.linspace(1, hnumber, int(hnumber/2))).astype(int)])
+        if (all_harmonics == 0):
+            fullness = 0
+        else:
+            fullness = 1 - odd_harmonics / all_harmonics
+
+        return brightness, richness, fullness, noiseness
 
     def CondOrLatentOperate(
         self,
@@ -319,7 +365,7 @@ class FeatureExatractorInit(EvalModelInit):
             )
             # 波形を6つ繋げる
             # print(x)
-            six_cycle_wavetable = scw_combain(x.squeeze(0), duplicate_num=6)
+            six_cycle_wavetable = scw_combain(x.squeeze(0), duplicate_num=15)
             est_label.append(
                 self.est_label_eval(
                     six_cycle_wavetable, attrs, label_name=label_name, dbFlg=False
@@ -327,9 +373,10 @@ class FeatureExatractorInit(EvalModelInit):
             )
 
         # normalize
-        est_label = Normalize(
-            est_label, normalize_method=normalize_method, label_name=label_name
-        )
+        if normalize_method is not None:
+            est_label = Normalize(
+                est_label, normalize_method=normalize_method, label_name=label_name
+            )
 
         return cond_label, est_label
 
@@ -349,7 +396,8 @@ class FeatureExatractorInit(EvalModelInit):
         self, wavetable: torch.Tensor, attrs: dict, label_name: str, dbFlg: bool = False
     ):
         # essentiaでの処理
-        c, sp, k, z, sc, o, d, ps, h = self.ytn_audio_exatractor(wavetable, attrs)
+        c, sp, k, z, sc, o, d, ps, h = self.essentia_audio_exatractor(wavetable, attrs)
+        bright, ritch, odd, zcr = self.dco_extractFeatures(wavetable, 15)
 
         if label_name == "SpectralCentroid":
             est_data = c
@@ -367,10 +415,107 @@ class FeatureExatractorInit(EvalModelInit):
             est_data = ps
         elif label_name == "HNR":
             est_data = h
+        elif label_name == "dco_brightness":
+            est_data = bright
+        elif label_name == "dco_richness":
+            est_data = ritch
+        elif label_name == "dco_oddenergy":
+            est_data = odd
+        elif label_name == "dco_zcr":
+            est_data = zcr
         else:
             raise Exception("Error!")
 
         return est_data
+
+    def __call__(
+        self,
+        attrs_label: list,
+        mode="cond",
+        dm_num: int = 15,
+        resolution_num: int = 10,
+        bias: int = 1,
+        save_name: str = "test",
+    ):
+
+        fig, axes = plt.subplots(
+            dm_num, len(attrs_label) + 2, figsize=(30, 3 * dm_num), tight_layout=True
+        )
+        x = np.array(range(resolution_num + 1)) / resolution_num
+
+        """
+        CentroidMAE = 0
+        SpreadMAE = 0
+        KurtosisMAE = 0
+        ZeroXMAE = 0
+        OddMAE = 0
+        PsMAE = 0
+        HnrMAE = 0
+        """
+
+        for j in tqdm(range(dm_num)):
+            for i in range(len(attrs_label) + 2):
+
+                if i == 0:
+                    wavetable, attrs = self.dm.train_dataset[j]
+                    axes[j, i].plot(wavetable.squeeze(0))
+                    axes[j, i].set_title(attrs["name"])
+                    axes[j, i].grid(True)
+
+                elif i == 1:
+                    spectrum = self._scw_combain_spec(wavetable, 6)[0]
+                    axes[j, i].plot(spectrum.squeeze(0))
+                    axes[j, i].set_title("spectrum : " + attrs["name"])
+                    axes[j, i].grid(True)
+
+                else:
+                    target, estimate = self.CondOrLatentOperate(
+                        attrs_label[i - 2],
+                        normalize_method=None,
+                        dm_num=j,
+                        resolution_num=resolution_num,
+                        bias=bias,
+                        mode=mode,
+                    )
+
+                    axes[j, i].set_title(attrs_label[i - 2])
+                    axes[j, i].grid(True)
+                    axes[j, i].plot(x, target, label="condition value")
+                    axes[j, i].plot(x, estimate, label="estimate value")
+                    axes[j, i].set_xlim(0, 1)
+                    axes[j, i].set_ylim(0, 1)
+                    axes[j, i].set_xlabel("input", size=10)
+                    axes[j, i].set_ylabel("output", size=10)
+                    axes[j, i].legend()
+        """
+                    if i == 2:
+                        CentroidMAE += np.mean(np.array(estimate) - np.array(target))
+                    elif i == 3:
+                        SpreadMAE += np.mean(np.array(estimate) - np.array(target))
+                    elif i == 4:
+                        KurtosisMAE += np.mean(np.array(estimate) - np.array(target))
+                    elif i == 5:
+                        ZeroXMAE += np.mean(np.array(estimate) - np.array(target))
+                    elif i == 6:
+                        OddMAE += np.mean(np.array(estimate) - np.array(target))
+                    elif i == 7:
+                        PsMAE += np.mean(np.array(estimate) - np.array(target))
+                    elif i == 8:
+                        HnrMAE += np.mean(np.array(estimate) - np.array(target))
+
+        print("CentroidMAE :", CentroidMAE)
+        print("SpreadMAE :", SpreadMAE)
+        print("KurtosisMAE :", KurtosisMAE)
+        print("ZeroXMAE :", ZeroXMAE)
+        print("OddMAE :", OddMAE)
+        print("PsMAE :", PsMAE)
+        print("HNRMAE :", HnrMAE)
+        """
+
+        if save_name is not None:
+            plt.savefig(save_name + ".png")
+        plt.show()
+        wandb.log({"AudioFeature": fig})
 
 # Preprocess
 
@@ -505,89 +650,3 @@ def yeojonson_for_WT(list, label_name: str, sett):
     else:
         raise Exception("Error!")
     return list
-
-def __call__(
-    self,
-    attrs_label: list,
-    mode="cond",
-    dm_num: int = 15,
-    resolution_num: int = 10,
-    bias: int = 1,
-    save_name: str = "test",
-):
-
-    fig, axes = plt.subplots(
-        dm_num, len(attrs_label) + 2, figsize=(30, 3 * dm_num), tight_layout=True
-    )
-    x = np.array(range(resolution_num + 1)) / resolution_num
-
-    CentroidMAE = 0
-    SpreadMAE = 0
-    KurtosisMAE = 0
-    ZeroXMAE = 0
-    OddMAE = 0
-    PsMAE = 0
-    HnrMAE = 0
-
-    for j in tqdm(range(dm_num)):
-        for i in range(len(attrs_label) + 2):
-
-            if i == 0:
-                wavetable, attrs = self.dm.train_dataset[j]
-                axes[j, i].plot(wavetable.squeeze(0))
-                axes[j, i].set_title(attrs["name"])
-                axes[j, i].grid(True)
-
-            elif i == 1:
-                spectrum = self._scw_combain_spec(wavetable, 6)[0]
-                axes[j, i].plot(spectrum.squeeze(0))
-                axes[j, i].set_title("spectrum : " + attrs["name"])
-                axes[j, i].grid(True)
-
-            else:
-                target, estimate = self.CondOrLatentOperate(
-                    attrs_label[i - 2],
-                    normalize_method="yeojohnson",
-                    dm_num=j,
-                    resolution_num=resolution_num,
-                    bias=bias,
-                    mode=mode,
-                )
-
-                axes[j, i].set_title(attrs_label[i - 2])
-                axes[j, i].grid(True)
-                axes[j, i].plot(x, target, label="condition value")
-                axes[j, i].plot(x, estimate, label="estimate value")
-                axes[j, i].set_xlim(0, 1)
-                axes[j, i].set_ylim(0, 1)
-                axes[j, i].set_xlabel("input", size=10)
-                axes[j, i].set_ylabel("output", size=10)
-                axes[j, i].legend()
-
-                if i == 2:
-                    CentroidMAE += np.mean(np.array(estimate) - np.array(target))
-                elif i == 3:
-                    SpreadMAE += np.mean(np.array(estimate) - np.array(target))
-                elif i == 4:
-                    KurtosisMAE += np.mean(np.array(estimate) - np.array(target))
-                elif i == 5:
-                    ZeroXMAE += np.mean(np.array(estimate) - np.array(target))
-                elif i == 6:
-                    OddMAE += np.mean(np.array(estimate) - np.array(target))
-                elif i == 7:
-                    PsMAE += np.mean(np.array(estimate) - np.array(target))
-                elif i == 8:
-                    HnrMAE += np.mean(np.array(estimate) - np.array(target))
-
-    print("CentroidMAE :", CentroidMAE)
-    print("SpreadMAE :", SpreadMAE)
-    print("KurtosisMAE :", KurtosisMAE)
-    print("ZeroXMAE :", ZeroXMAE)
-    print("OddMAE :", OddMAE)
-    print("PsMAE :", PsMAE)
-    print("HNRMAE :", HnrMAE)
-
-    if save_name is not None:
-        plt.savefig(save_name + ".png")
-    plt.show()
-    wandb.log({"AudioFeature": fig})

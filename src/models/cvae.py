@@ -46,8 +46,8 @@ class LitCVAE(pl.LightningModule):
         self.duplicate_num = duplicate_num
         self.lr = lr
 
-        self.encoder = Encoder(cond_layer=enc_cond_layer, channels=enc_channels , cond_ch=5, latent_dim=latent_dim)
-        self.decoder = Decoder(cond_layer=dec_cond_layer, channels=dec_channels , cond_ch=5, latent_dim=latent_dim)
+        self.encoder = Encoder(cond_layer=enc_cond_layer, channels=enc_channels , cond_ch=4, latent_dim=latent_dim)
+        self.decoder = Decoder(cond_layer=dec_cond_layer, channels=dec_channels , cond_ch=4, latent_dim=latent_dim)
 
         self.loudness = submodule.Loudness(sample_rate, block_size=sample_points * duplicate_num, n_fft=sample_points * duplicate_num)
         self.distance = submodule.Distance(scales=[sample_points * duplicate_num], overlap=0)
@@ -263,6 +263,7 @@ class LitCVAE(pl.LightningModule):
         self, batch: tuple, batch_idx: int, stage: str
     ) -> torch.Tensor:  # ロス関数定義.推論時は通らない
         x, attrs = self._prepare_batch(batch)
+        n_batch = x.shape[0]
         mu, log_var, x_out = self.forward(x, attrs)
         assert x.shape == x_out.shape, f'in: {x.shape} != out: {x_out.shape}'
 
@@ -275,21 +276,17 @@ class LitCVAE(pl.LightningModule):
         self.loud_dist = (loud_x - loud_x_out).pow(2).mean()
         spec_loss = self.distance(x, x_out)
         # 波形のL1ロスを取る
-        # wave_loss = torch.nn.functional.mse_loss(x, x_out)
+        wave_loss = torch.nn.functional.l1_loss(x, x_out)
 
         kl_loss = -0.5 * (1 + log_var - mu**2 - torch.exp(log_var)).sum(
             dim=1
         )  # sumは潜在変数次元分を合計させている?
         kl_loss = kl_loss.mean()
 
-        # alpha = self.current_epoch / 10000 # self.trainer.max_epochs
-        #beta = self.current_epoch / 10000 # self.trainer.max_epochs
-
-        # self.log("alpha", alpha, on_step=True, on_epoch=False)
         self.loss = spec_loss + (self.beta*kl_loss) + self.loud_dist  # + wave_loss
         self.log("beta", self.beta, on_step=True, on_epoch=True)
         self.log(f"{stage}_loud_dist", self.loud_dist, on_step=True, on_epoch=True)
-        # self.log(f"{stage}_wave_loss", wave_loss, on_step=True, on_epoch=True)
+        self.log(f"{stage}_wave_loss", wave_loss, on_step=True, on_epoch=True)
         self.log(f"{stage}_kl_loss", kl_loss, on_step=True, on_epoch=True)
         self.log(
             f"{stage}_spec_loss", spec_loss, on_step=True, on_epoch=True
@@ -297,6 +294,8 @@ class LitCVAE(pl.LightningModule):
         self.log(
             f"{stage}_loss", self.loss, on_step=True, on_epoch=True, prog_bar=True
         )
+        if self.beta < 1:
+            self.beta += 1 / 1000
         return self.loss
 
     def _scw_batch_proc(self, x: torch.Tensor) -> torch.Tensor:
@@ -400,7 +399,6 @@ class Base(nn.Module):
 
         brightness = torch.tensor(attrs["dco_brightness"])
         ritchness = torch.tensor(attrs["dco_richness"])
-        flatness = torch.tensor(attrs["dco_flatness"])
         oddenergy = torch.tensor(attrs["dco_oddenergy"])
         zcr = torch.tensor(attrs["dco_zcr"])
 
@@ -410,13 +408,11 @@ class Base(nn.Module):
 
         brightness_y = y.to(device) * brightness.to(device)
         ritchness_y = y.to(device) * ritchness.to(device)
-        flatness_y = y.to(device) * flatness.to(device)
         oddenergy_y = y.to(device) * oddenergy.to(device)
         zcr_y = y.to(device) * zcr.to(device)
 
         x = torch.cat([x, brightness_y.permute(2, 1, 0)], dim=1).to(torch.float32)
         x = torch.cat([x, ritchness_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-        x = torch.cat([x, flatness_y.permute(2, 1, 0)], dim=1).to(torch.float32)
         x = torch.cat([x, oddenergy_y.permute(2, 1, 0)], dim=1).to(torch.float32)
         x = torch.cat([x, zcr_y.permute(2, 1, 0)], dim=1).to(torch.float32)
 

@@ -13,7 +13,7 @@ model:
   enc_channels: [64, 128, 256, 512]
   latent_dim: 256  # 128
   dec_channels: [128, 64, 32, 16]   # [64, 32, 16, 8]
-  beta: 0.1
+  beta: 1
   duplicate_num: 6
   sample_points: 600
   sample_rate: 44100
@@ -39,7 +39,7 @@ logger:
 
 trainer:
   _target_: pytorch_lightning.Trainer
-  max_epochs: 1001
+  max_epochs: 2000
   enable_checkpointing: True
   auto_lr_find: True
   auto_scale_batch_size: True

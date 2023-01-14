@@ -139,12 +139,12 @@ def main(cfg: DictConfig) -> None:
 
     if cfg.debug_mode is True:
         subprocess.run('wandb off', shell=True)
-        logger_level = logging.DEBUG
+        logger_level = logging.INFO # DEBUG
         setup_logger(logger_level=logger_level)
-        cfg.trainer.max_epochs = 1
+        cfg.trainer.max_epochs = 2
         cfg.logger.log_model = False
         cfg.logger.offline = True
-        cfg.callbacks = None
+        # cfg.callbacks = None
     else:
         logger_level = logging.WARNING
         logger.setLevel(logger_level)

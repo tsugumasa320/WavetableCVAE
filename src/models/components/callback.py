@@ -41,7 +41,9 @@ class MyPrintingCallback(pl.callbacks.Callback):
     def on_validation_epoch_end(self, trainer, model):
         """Called when the validation epoch ends."""
 
-        if model.current_epoch % 1000  == 0 and model.current_epoch / 1000 > 0:
+        check_epoch = 1000
+
+        if model.current_epoch % check_epoch == 0 and model.current_epoch / check_epoch > 0:
             print("Visualizing")
             visualize = Visualize(model)
             visualize.plot_gridspectrum(latent_op=None,show=False,save_path=None)
@@ -65,7 +67,6 @@ class MyPrintingCallback(pl.callbacks.Callback):
             attrs_label = [
                 "dco_brightness",
                 "dco_richness",
-                "dco_flatness",
                 "dco_oddenergy",
                 "dco_zcr",
             ]
