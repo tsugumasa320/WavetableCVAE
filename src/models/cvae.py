@@ -295,7 +295,10 @@ class LitCVAE(pl.LightningModule):
         self.loud_dist = (loud_x - loud_x_out).pow(2).mean()
         spec_loss = self.distance(x, x_out)
 
-        kl_loss =  (-0.5*(1+log_var - mu**2- torch.exp(log_var)).sum(dim = 1)).mean(dim =0)
+        # kl_loss =  (-0.5*(1+log_var - mu**2- torch.exp(log_var)).sum(dim = 1)).mean(dim =0)
+        # kl_loss = (-0.5*(1+log_var - mu**2- torch.exp(log_var)).sum(dim = (1,2))).mean(dim =0)
+        kl_loss = (-0.5*(1+log_var - mu**2- torch.exp(log_var)).mean(dim = (0,1,2))
+
 
         beta = self.get_beta_kl(
             epoch=self.current_epoch,
@@ -315,7 +318,7 @@ class LitCVAE(pl.LightningModule):
 
         self.log("beta", self.beta, on_step=True, on_epoch=True)
         self.log(f"{stage}_loud_dist", self.loud_dist, on_step=True, on_epoch=True)
-        self.log(f"{stage}_kl_loss", kl_loss, on_step=True, on_epoch=True)
+        self.log(f"{stage}_kl_loss", beta*kl_loss, on_step=True, on_epoch=True)
         self.log(
             f"{stage}_spec_loss", spec_loss, on_step=True, on_epoch=True
             )
