@@ -49,8 +49,10 @@ trainer:
 
 callbacks:
   _target_: "src.models.components.callback.MyPrintingCallback"
+  print_every_n_steps: 1000
 
 resume: null  # "/workspace/My-reserch-project/WavetableCVAE/rp6j1uld/checkpoints/epoch=1999-step=198000.ckpt"
 save: False
 seed: 42
 debug_mode: False
+comment: null

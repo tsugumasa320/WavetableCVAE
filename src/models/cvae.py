@@ -268,7 +268,7 @@ class LitCVAE(pl.LightningModule):
         x, _ = attrs
         return self(x)
 
-    def get_beta_kl(epoch, warmup, min_beta, max_beta):
+    def get_beta_kl(self, epoch, warmup, min_beta, max_beta):
         if epoch > warmup: return max_beta
         t = epoch / warmup
         min_beta_log = np.log(min_beta)
@@ -297,6 +297,7 @@ class LitCVAE(pl.LightningModule):
         # kl_loss = (-0.5*(1+log_var - mu**2- torch.exp(log_var)).sum(dim = (1,2))).mean(dim =0)
         kl_loss = -0.5*(1+log_var - mu**2- torch.exp(log_var)).mean(dim = (0,1,2))
 
+        # print("self.current_epoch", self.current_epoch)
 
         beta = self.get_beta_kl(
             epoch=self.current_epoch,
@@ -314,7 +315,8 @@ class LitCVAE(pl.LightningModule):
         else:
             self.loss = spec_loss + (beta*kl_loss) + self.loud_dist
 
-        self.log("beta", self.beta, on_step=True, on_epoch=True)
+        self.log("beta",
+        beta, on_step=True, on_epoch=True)
         self.log(f"{stage}_loud_dist", self.loud_dist, on_step=True, on_epoch=True)
         self.log(f"{stage}_kl_loss", beta*kl_loss, on_step=True, on_epoch=True)
         self.log(

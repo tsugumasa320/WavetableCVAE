@@ -138,15 +138,18 @@ class TrainerWT(pl.LightningModule):
 def main(cfg: DictConfig) -> None:
 
     if cfg.debug_mode is True:
+        print("debug mode")
         subprocess.run('wandb off', shell=True)
-        logger_level = logging.INFO # DEBUG
+        logger_level = logging.WARMING  # INFO # DEBUG
         setup_logger(logger_level=logger_level)
         cfg.trainer.max_epochs = 2
         cfg.logger.log_model = False
         cfg.logger.offline = True
-        # cfg.callbacks = None
+        cfg.callbacks = None
+        cfg.callbacks.print_every_n_steps = 1
     else:
-        logger_level = logging.WARNING
+        print("production mode")
+        logger_level = logging.ERROR
         logger.setLevel(logger_level)
         subprocess.run('wandb on', shell=True)
 

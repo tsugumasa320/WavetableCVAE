@@ -35,16 +35,18 @@ from tqdm import tqdm
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class MyPrintingCallback(pl.callbacks.Callback):
-    def __init__(self):
+    def __init__(self, print_every_n_steps: int = 1000):
+        self.print_every_n_steps = print_every_n_steps
         super().__init__()
 
     def on_validation_epoch_end(self, trainer, model):
         """Called when the validation epoch ends."""
 
-        check_epoch = 1000
+        if model.current_epoch % self.print_every_n_steps == 0 \
+            and model.current_epoch / self.print_every_n_steps > 0:
 
-        if model.current_epoch % check_epoch == 0 and model.current_epoch / check_epoch > 0:
             print("Visualizing")
+
             visualize = Visualize(model)
             visualize.plot_gridspectrum(latent_op=None,show=False,save_path=None)
             visualize.plot_gridwaveform(latent_op=None,show=False,save_path=None)
