@@ -41,10 +41,6 @@ class MyPrintingCallback(pl.callbacks.Callback):
     def on_validation_epoch_end(self, trainer, model):
         """Called when the validation epoch ends."""
 
-        # Monotonic annealing
-        if model.beta < 1 or model.current_epoch != 0:
-            model.beta += 1 / 1000
-
         check_epoch = 1000
 
         if model.current_epoch % check_epoch == 0 and model.current_epoch / check_epoch > 0:
@@ -126,6 +122,7 @@ def on_train_end_notification(model: pl.LightningModule, comment: str) -> None:
 
     comment = f"{d_today}-{t_now}-{model_name}-{comment}の学習終了！"
     LINENotification(comment)
+
 
 if __name__ == "__main__":
     LINENotification("test")

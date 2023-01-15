@@ -5,6 +5,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import logging
+import numpy as np
 
 # main.pyで宣言したloggerの子loggerオブジェクトの宣言
 logger = logging.getLogger("unit_test").getChild("sub")
@@ -28,12 +29,17 @@ class LitCVAE(pl.LightningModule):
         dec_cond_layer: list,
         enc_channels :list,
         dec_channels :list,
-        beta :int = 0.1,
+        beta :float = 0.1,
         sample_points: int = 600,
         sample_rate :int = 44100,
         lr: float = 1e-5,
         duplicate_num:int = 6,
         latent_dim: int = 128,
+        warmup: int = 2000,
+        min_kl: float = 1e-4,
+        max_kl: float = 5e-1,
+        wave_loss_coef: float = None,
+
     ):  # Define computations here
         super().__init__()
         assert sample_points == 600
@@ -41,10 +47,15 @@ class LitCVAE(pl.LightningModule):
         # save hyper-parameters to self.hparams (auto-logged by W&B)
         self.save_hyperparameters()
 
-        self.beta = beta
+        self.beta = beta  # .to(torch.float32)
         self.sample_points = sample_points
         self.duplicate_num = duplicate_num
         self.lr = lr
+        self.warmup = warmup
+        self.min_kl = min_kl
+        self.max_kl = max_kl
+
+        self.wave_loss_coef = wave_loss_coef
 
         self.encoder = Encoder(cond_layer=enc_cond_layer, channels=enc_channels , cond_ch=4, latent_dim=latent_dim)
         self.decoder = Decoder(cond_layer=dec_cond_layer, channels=dec_channels , cond_ch=4, latent_dim=latent_dim)
@@ -259,6 +270,14 @@ class LitCVAE(pl.LightningModule):
         x, _ = attrs
         return self(x)
 
+    def get_beta_kl(epoch, warmup, min_beta, max_beta):
+        if epoch > warmup: return max_beta
+        t = epoch / warmup
+        min_beta_log = np.log(min_beta)
+        max_beta_log = np.log(max_beta)
+        beta_log = t * (max_beta_log - min_beta_log) + min_beta_log
+        return np.exp(beta_log)
+
     def _common_step(
         self, batch: tuple, batch_idx: int, stage: str
     ) -> torch.Tensor:  # ロス関数定義.推論時は通らない
@@ -275,18 +294,31 @@ class LitCVAE(pl.LightningModule):
         loud_x_out = self.loudness(ｘ_out)
         self.loud_dist = (loud_x - loud_x_out).pow(2).mean()
         spec_loss = self.distance(x, x_out)
-        # 波形のL1ロスを取る
-        wave_loss = torch.nn.functional.l1_loss(x, x_out)
 
+        kl_loss =  (-0.5*(1+log_var - mu**2- torch.exp(log_var)).sum(dim = 1)).mean(dim =0)
         kl_loss = -0.5 * (1 + log_var - mu**2 - torch.exp(log_var)).sum(
             dim=1
         )  # sumは潜在変数次元分を合計させている?
         kl_loss = kl_loss.mean()
 
-        self.loss = spec_loss + (self.beta*kl_loss) + self.loud_dist  # + wave_loss
+        beta = self.get_beta_kl(
+            epoch=self.current_epoch,
+            warmup=self.warmup,
+            min_beta=self.min_kl,
+            max_beta=self.max_kl,
+        )
+
+        if self.wave_loss_coef is not None:
+            # 波形のL1ロスを取る
+            wave_loss = torch.nn.functional.l1_loss(x, x_out)
+            self.log(f"{stage}_wave_loss", wave_loss, on_step=True, on_epoch=True)
+            self.loss = spec_loss + (beta*kl_loss) + self.loud_dist + (self.wave_loss_coef*wave_loss)
+
+        else:
+            self.loss = spec_loss + (beta*kl_loss) + self.loud_dist
+
         self.log("beta", self.beta, on_step=True, on_epoch=True)
         self.log(f"{stage}_loud_dist", self.loud_dist, on_step=True, on_epoch=True)
-        self.log(f"{stage}_wave_loss", wave_loss, on_step=True, on_epoch=True)
         self.log(f"{stage}_kl_loss", kl_loss, on_step=True, on_epoch=True)
         self.log(
             f"{stage}_spec_loss", spec_loss, on_step=True, on_epoch=True
@@ -331,7 +363,6 @@ class LitCVAE(pl.LightningModule):
     def configure_optimizers(self):  # Optimizerと学習率(lr)設定
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
-
 
 class Base(nn.Module):
     def __init__(self):
@@ -424,7 +455,7 @@ class Encoder(Base):
         self,
         cond_layer: list,
         channels:list = [64, 128, 256, 512],
-        cond_ch: int = 9,
+        cond_ch: int = 0,
         latent_dim: int = 128
         ):
 
