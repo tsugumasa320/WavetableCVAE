@@ -16,7 +16,7 @@ model:
   duplicate_num: 6
   sample_points: 600
   sample_rate: 44100
-  warmup: int: 2000
+  warmup: 2000
   min_kl: 1e-4
   max_kl: 5e-1
   lr: 1e-5

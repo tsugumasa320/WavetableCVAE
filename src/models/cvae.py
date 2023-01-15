@@ -29,7 +29,6 @@ class LitCVAE(pl.LightningModule):
         dec_cond_layer: list,
         enc_channels :list,
         dec_channels :list,
-        beta :float = 0.1,
         sample_points: int = 600,
         sample_rate :int = 44100,
         lr: float = 1e-5,
@@ -47,7 +46,6 @@ class LitCVAE(pl.LightningModule):
         # save hyper-parameters to self.hparams (auto-logged by W&B)
         self.save_hyperparameters()
 
-        self.beta = beta  # .to(torch.float32)
         self.sample_points = sample_points
         self.duplicate_num = duplicate_num
         self.lr = lr
@@ -297,7 +295,7 @@ class LitCVAE(pl.LightningModule):
 
         # kl_loss =  (-0.5*(1+log_var - mu**2- torch.exp(log_var)).sum(dim = 1)).mean(dim =0)
         # kl_loss = (-0.5*(1+log_var - mu**2- torch.exp(log_var)).sum(dim = (1,2))).mean(dim =0)
-        kl_loss = (-0.5*(1+log_var - mu**2- torch.exp(log_var)).mean(dim = (0,1,2))
+        kl_loss = -0.5*(1+log_var - mu**2- torch.exp(log_var)).mean(dim = (0,1,2))
 
 
         beta = self.get_beta_kl(
