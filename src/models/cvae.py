@@ -296,10 +296,6 @@ class LitCVAE(pl.LightningModule):
         spec_loss = self.distance(x, x_out)
 
         kl_loss =  (-0.5*(1+log_var - mu**2- torch.exp(log_var)).sum(dim = 1)).mean(dim =0)
-        kl_loss = -0.5 * (1 + log_var - mu**2 - torch.exp(log_var)).sum(
-            dim=1
-        )  # sumは潜在変数次元分を合計させている?
-        kl_loss = kl_loss.mean()
 
         beta = self.get_beta_kl(
             epoch=self.current_epoch,
