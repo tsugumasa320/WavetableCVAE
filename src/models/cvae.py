@@ -320,16 +320,15 @@ class LitCVAE(pl.LightningModule):
         distance = self.distance(x, x_out)
         distance = distance + loud_dist
 
-        # kl_loss =  (-0.5*(1+log_var - mu**2- torch.exp(log_var)).sum(dim = 1)).mean()
-        # kl_loss = (-0.5*(1+log_var - mu**2- torch.exp(log_var)).sum(dim = (1,2))).mean(dim =0)
-        # kl_loss = -0.5*(1+log_var - mu**2- torch.exp(log_var)).mean(dim = (0,1,2))
-
         beta = self.get_beta_kl(
             epoch=self.current_epoch,
             warmup=self.warmup,
             min_beta=self.min_kl,
             max_beta=self.max_kl,
         )
+
+        # attr_reg_loss = reg_loss(z_tilde, rad_, len(data), gamma = 1.0, factor = 1.0)
+
 
         if self.wave_loss_coef is not None:
             # 波形のL1ロスを取る
@@ -543,3 +542,32 @@ class Decoder(Base):
         x = self.convout(x)
 
         return x
+
+"""
+def reg_loss_sign(latent_code, attribute, factor=1.0):
+        # compute latent distance matrix
+        latent_code = latent_code.view(-1, 1).repeat(1, latent_code.shape[0])
+        #print(f"latent code shape: {latent_code.shape}")
+        lc_dist_mat = (latent_code - latent_code.transpose(1, 0)).view(-1, 1)
+
+        # compute attribute distance matrix
+        attribute = attribute.view(-1, 1).repeat(1, attribute.shape[0])
+        #print(attribute.shape)
+        attribute_dist_mat = (attribute - attribute.transpose(1, 0)).view(-1, 1)
+
+        # compute regularization loss
+        loss_fn = torch.nn.L1Loss()
+        lc_tanh = torch.tanh(lc_dist_mat * factor) # factor: tunable hyperparameter
+        attribute_sign = torch.sign(attribute_dist_mat)
+        sign_loss = loss_fn(lc_tanh, attribute_sign.float())
+
+        return sign_loss
+
+def reg_loss(latent_code, radiomics_, mini_batch_size, gamma = 1.0, factor = 1.0):
+    AR_loss = 0.0
+    for dim in range(radiomics_.shape[1]):
+        x = latent_code[:, dim]
+        radiomics_dim = radiomics_[:, dim]
+        AR_loss += reg_loss_sign(x, radiomics_dim, factor=factor )
+    return gamma * AR_loss
+"""
