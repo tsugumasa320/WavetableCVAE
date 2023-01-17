@@ -27,13 +27,18 @@ class LitCVAE(pl.LightningModule):
         self,
         enc_cond_layer: list,
         dec_cond_layer: list,
-        enc_channels :list,
-        dec_channels :list,
+        enc_channels :list = [64, 128, 256, 512],
+        dec_channels :list = [256, 128, 64, 32],
+        enc_cond_ch :int = 4,
+        dec_cond_ch :int = 4,
+        enc_kernel_size :list = [9, 9, 9, 9],
+        dec_kernel_size :list = [8, 8, 8, 9],
+        enc_stride :list = [1, 1, 2, 2],
+        dec_stride :list = [2, 1, 2, 1],
         sample_points: int = 600,
         sample_rate :int = 44100,
         lr: float = 1e-5,
         duplicate_num:int = 6,
-        latent_dim: int = 128,
         warmup: int = 2000,
         min_kl: float = 1e-4,
         max_kl: float = 5e-1,
@@ -55,8 +60,21 @@ class LitCVAE(pl.LightningModule):
 
         self.wave_loss_coef = wave_loss_coef
 
-        self.encoder = Encoder(cond_layer=enc_cond_layer, channels=enc_channels , cond_ch=4, latent_dim=latent_dim)
-        self.decoder = Decoder(cond_layer=dec_cond_layer, channels=dec_channels , cond_ch=4, latent_dim=latent_dim)
+        self.encoder = Encoder(
+            cond_layer=enc_cond_layer,
+            channels=enc_channels,
+            cond_ch=enc_cond_ch,
+            kernel_size=enc_kernel_size,
+            stride=enc_stride,
+            )
+
+        self.decoder = Decoder(
+            cond_layer=dec_cond_layer,
+            channels=dec_channels,
+            cond_ch=dec_cond_ch,
+            kernel_size=dec_kernel_size,
+            stride=dec_stride,
+            )
 
         self.loudness = submodule.Loudness(sample_rate, block_size=sample_points * duplicate_num, n_fft=sample_points * duplicate_num)
         self.distance = submodule.Distance(scales=[sample_points * duplicate_num], overlap=0)
@@ -79,15 +97,15 @@ class LitCVAE(pl.LightningModule):
         torch.Tensor, torch.Tensor, torch.Tensor
     ]:  # Use for inference only (separate from training_step)
 
-        mu, log_var = self.encoder(x, attrs)
-        hidden = self._reparametrize(mu, log_var)
+        mean, scale = self.encoder(x, attrs)
+        z, kl = self._reparametrize(mean, scale)
         """
         if latent_op is not None:
             hidden = self._latentdimControler(hidden, latent_op)
         """
 
-        output = self.decoder(hidden, attrs)
-        return mu, log_var, output
+        output = self.decoder(z, attrs)
+        return z, kl, output
 
     """
     def _latentdimAttributesCalc(self):
@@ -239,12 +257,21 @@ class LitCVAE(pl.LightningModule):
         return hidden
     """
 
-    def _reparametrize(self, mu: torch.Tensor, log_var: torch.Tensor) -> torch.Tensor:
+    def _reparametrize(self, mean: torch.Tensor, scale: torch.Tensor) -> torch.Tensor:
         # Reparametrization Trick to allow gradients to backpropagate from the
         # stochastic part of the model
+        std = nn.functional.softplus(scale) + 1e-4
+        var = std * std
+        logvar = torch.log(var)
+        z = torch.randn_like(mean) * std + mean
+        kl = (mean * mean + var - logvar - 1).sum(1).mean()
+
+        """
         sigma = torch.exp(0.5 * log_var)
         eps = torch.randn_like(sigma)
         return mu + sigma * eps  # z = mu + sigma * epsilon
+        """
+        return z, kl
 
     def training_step(
         self, attrs: dict, attrs_idx: int
@@ -280,8 +307,7 @@ class LitCVAE(pl.LightningModule):
         self, batch: tuple, batch_idx: int, stage: str
     ) -> torch.Tensor:  # ロス関数定義.推論時は通らない
         x, attrs = self._prepare_batch(batch)
-        n_batch = x.shape[0]
-        mu, log_var, x_out = self.forward(x, attrs)
+        z, kl, x_out = self.forward(x, attrs)
         assert x.shape == x_out.shape, f'in: {x.shape} != out: {x_out.shape}'
 
         x = self._scw_batch_proc(x)
@@ -290,14 +316,13 @@ class LitCVAE(pl.LightningModule):
         # RAVE Loss
         loud_x = self.loudness(x)
         loud_x_out = self.loudness(ｘ_out)
-        self.loud_dist = (loud_x - loud_x_out).pow(2).mean()
-        spec_loss = self.distance(x, x_out)
+        loud_dist = (loud_x - loud_x_out).pow(2).mean()
+        distance = self.distance(x, x_out)
+        distance = distance + loud_dist
 
-        # kl_loss =  (-0.5*(1+log_var - mu**2- torch.exp(log_var)).sum(dim = 1)).mean(dim =0)
+        # kl_loss =  (-0.5*(1+log_var - mu**2- torch.exp(log_var)).sum(dim = 1)).mean()
         # kl_loss = (-0.5*(1+log_var - mu**2- torch.exp(log_var)).sum(dim = (1,2))).mean(dim =0)
-        kl_loss = -0.5*(1+log_var - mu**2- torch.exp(log_var)).mean(dim = (0,1,2))
-
-        # print("self.current_epoch", self.current_epoch)
+        # kl_loss = -0.5*(1+log_var - mu**2- torch.exp(log_var)).mean(dim = (0,1,2))
 
         beta = self.get_beta_kl(
             epoch=self.current_epoch,
@@ -310,21 +335,15 @@ class LitCVAE(pl.LightningModule):
             # 波形のL1ロスを取る
             wave_loss = torch.nn.functional.l1_loss(x, x_out)
             self.log(f"{stage}_wave_loss", wave_loss, on_step=True, on_epoch=True)
-            self.loss = spec_loss + (beta*kl_loss) + self.loud_dist + (self.wave_loss_coef*wave_loss)
+            self.loss = distance + (beta*kl) + (self.wave_loss_coef*wave_loss)
 
         else:
-            self.loss = spec_loss + (beta*kl_loss) + self.loud_dist
+            self.loss = distance + (beta*kl)
 
-        self.log("beta",
-        beta, on_step=True, on_epoch=True)
-        self.log(f"{stage}_loud_dist", self.loud_dist, on_step=True, on_epoch=True)
-        self.log(f"{stage}_kl_loss", beta*kl_loss, on_step=True, on_epoch=True)
-        self.log(
-            f"{stage}_spec_loss", spec_loss, on_step=True, on_epoch=True
-            )
-        self.log(
-            f"{stage}_loss", self.loss, on_step=True, on_epoch=True, prog_bar=True
-        )
+        self.log(f"{stage}_distance", distance, on_step=True, on_epoch=True)
+        self.log("beta", beta, on_step=True, on_epoch=True)
+        self.log(f"{stage}_kl", beta*kl, on_step=True, on_epoch=True)
+        self.log(f"{stage}_loss", self.loss, on_step=True, on_epoch=True, prog_bar=True)
 
         return self.loss
 
@@ -447,160 +466,80 @@ class Base(nn.Module):
 
         return x
 
-
 class Encoder(Base):
-
     def __init__(
         self,
         cond_layer: list,
+        cond_ch: int = 4,
         channels:list = [64, 128, 256, 512],
-        cond_ch: int = 0,
-        latent_dim: int = 128
+        kernel_size: list = [9, 9, 9, 9],
+        stride: list = [1, 1, 2, 2],
         ):
 
         super().__init__()
 
-
         self.cond_layer = cond_layer
-        self.conv0 = nn.Sequential(
-            nn.Conv1d(
-                in_channels= 1 + cond_ch if cond_layer[0] is True else 1,
-                out_channels=channels[0], kernel_size=9, stride=1, padding=0
-            ),
-            nn.LeakyReLU(),
-            nn.BatchNorm1d(channels[0]),
-        )
-        self.conv1 = nn.Sequential(
-            nn.Conv1d(
-                in_channels=channels[0] + cond_ch if cond_layer[1] is True else channels[0],
-                out_channels=channels[1], kernel_size=9, stride=1, padding=0
-            ),
-            nn.LeakyReLU(),
-            nn.BatchNorm1d(channels[1]),
-        )
-        self.conv2 = nn.Sequential(
+        self.conv_layers = nn.ModuleList()
+        assert len(channels) == len(kernel_size) == len(stride) == len(cond_layer)
 
-            nn.Conv1d(
-                in_channels=channels[1] + cond_ch if cond_layer[2] is True else channels[1],
-                out_channels=channels[2], kernel_size=9, stride=2, padding=0
-            ),
-            nn.LeakyReLU(),
-            nn.BatchNorm1d(channels[2]),
-        )
-        self.conv3 = nn.Sequential(
-            nn.Conv1d(
-                in_channels=channels[2] + cond_ch if cond_layer[3] is True else channels[2],
-                out_channels=channels[3], kernel_size=9, stride=2, padding=0
-            ),
-            nn.LeakyReLU(),
-            nn.BatchNorm1d(channels[3]),
-        )
-
-        self.hidden2mu = nn.Conv1d(
-            in_channels=channels[3], out_channels=latent_dim, kernel_size=1, stride=1, padding=0
-        )
-        self.hidden2log_var = nn.Conv1d(
-            in_channels=channels[3], out_channels=latent_dim, kernel_size=1, stride=1, padding=0
-        )
+        for i in range(len(channels)):
+            _in_channels = 1 + cond_ch if i == 0 and cond_layer[i] else channels[i-1] + cond_ch if cond_layer[i] else channels[i-1]
+            _out_channels = channels[i]
+            _kernel_size = kernel_size[i]
+            _stride = stride[i]
+            layer = nn.Sequential(
+                nn.Conv1d(in_channels=_in_channels, out_channels=_out_channels, kernel_size=_kernel_size, stride=_stride, padding=0),
+                nn.LeakyReLU(),
+                nn.BatchNorm1d(_out_channels)
+            )
+            self.conv_layers.append(layer)
 
     def forward(self, x, attrs):
-
-        if self.cond_layer[0] is True:
-            logger.info("Encoder: conditioning[0]")
-            x = self._conditioning(x, attrs)
-        x = self.conv0(x)
-
-        if self.cond_layer[1] is True:
-            logger.info("Encoder: conditioning[1]")
-            x = self._conditioning(x, attrs)
-        x = self.conv1(x)
-
-        if self.cond_layer[2] is True:
-            logger.info("Encoder: conditioning[2]")
-            x = self._conditioning(x, attrs)
-        x = self.conv2(x)
-
-        if self.cond_layer[3] is True:
-            logger.info("Encoder: conditioning[3]")
-            x = self._conditioning(x, attrs)
-        x = self.conv3(x)
-
-        mu = self.hidden2mu(x)
-        log_var = self.hidden2log_var(x)
-
-        return mu, log_var
-
+        for i, layer in enumerate(self.conv_layers):
+            if self.cond_layer[i]:
+                x = self._conditioning(x, attrs)
+            x = layer(x)
+        return torch.split(tensor=x, split_size_or_sections=x.shape[1] // 2, dim=1)
 
 class Decoder(Base):
-
     def __init__(
         self,
         cond_layer: list,
-        channels: list=[64, 32, 16, 8],
-        cond_ch: int = 9,
-        latent_dim: int = 128
+        cond_ch: int = 4,
+        channels: list=[256, 128, 64, 32],
+        kernel_size: list = [8, 8, 8, 9],
+        stride: list = [2, 1, 2, 1],
         ):
 
         super().__init__()
 
         self.cond_layer = cond_layer
-        self.deconv0 = nn.Sequential(
-            submodule.UpSampling(
-                in_channels=latent_dim + cond_ch if cond_layer[0] is True else latent_dim,
-                out_channels=channels[0], kernel_size=8, stride=2
-            ),
-            submodule.ResBlock(channels[0], 3),
-        )
+        self.deconv_layers = nn.ModuleList()
+        assert len(channels) == len(kernel_size) == len(stride) == len(cond_layer)
 
-        self.deconv1 = nn.Sequential(
-            submodule.UpSampling(
-                in_channels=channels[0] + cond_ch if cond_layer[1] is True else channels[0],
-                out_channels=channels[1], kernel_size=8, stride=1
-            ),
-            submodule.ResBlock(channels[1], 3),
-        )
+        for i in range(len(channels)):
+            _in_channels = channels[i] + cond_ch if cond_layer[i] else channels[i]
+            _out_channels = channels[i] // 2
+            _kernel_size = kernel_size[i]
+            _stride = stride[i]
 
-        self.deconv2 = nn.Sequential(
-            submodule.UpSampling(
-                in_channels=channels[1] + cond_ch if cond_layer[2] is True else channels[1],
-                out_channels=channels[2], kernel_size=8, stride=2
-            ),
-            submodule.ResBlock(channels[2], 3),
-        )
-
-        self.deconv3 = nn.Sequential(
-            submodule.UpSampling(
-                in_channels=channels[2] + cond_ch if cond_layer[3] is True else channels[2],
-                out_channels=channels[3], kernel_size=9, stride=1
-            ),
-            submodule.ResBlock(channels[3], 3),
-        )
+            layer = nn.Sequential(
+                submodule.UpSampling(in_channels=_in_channels, out_channels=_out_channels, kernel_size=_kernel_size, stride=_stride),
+                submodule.ResBlock(_out_channels, 3)
+            )
+            self.deconv_layers.append(layer)
 
         self.convout = nn.Sequential(
-            submodule.ConvOut(in_channels=channels[3], out_channels=1, kernel_size=1, stride=1),
+            submodule.ConvOut(in_channels=channels[-1] // 2, out_channels=1, kernel_size=1, stride=1),
         )
 
     def forward(self, x, attrs):
 
-        if self.cond_layer[0] is True:
-            logger.info("Decoder: conditioning[0]")
-            x = self._conditioning(x, attrs)
-        x = self.deconv0(x)
-
-        if self.cond_layer[1] is True:
-            logger.info("Decoder: conditioning[1]")
-            x = self._conditioning(x, attrs)
-        x = self.deconv1(x)
-
-        if self.cond_layer[2] is True:
-            logger.info("Decoder: conditioning[2]")
-            x = self._conditioning(x, attrs)
-        x = self.deconv2(x)
-
-        if self.cond_layer[3] is True:
-            logger.info("Decoder: conditioning[3]")
-            x = self._conditioning(x, attrs)
-        x = self.deconv3(x)
+        for i in range(len(self.deconv_layers)):
+            if self.cond_layer[i] is True:
+                logger.info(f"Decoder: conditioning[{i}]")
+                x = self._conditioning(x, attrs)
+            x = self.deconv_layers[i](x)
         x = self.convout(x)
 
         return x
