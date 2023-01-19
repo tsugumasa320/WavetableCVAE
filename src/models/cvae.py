@@ -29,8 +29,8 @@ class LitCVAE(pl.LightningModule):
         dec_cond_layer: list,
         enc_channels :list = [64, 128, 256, 512],
         dec_channels :list = [256, 128, 64, 32],
-        enc_cond_ch :int = 4,
-        dec_cond_ch :int = 4,
+        enc_cond_num :int = 4,
+        dec_cond_num :int = 4,
         enc_kernel_size :list = [9, 9, 9, 9],
         dec_kernel_size :list = [8, 8, 8, 9],
         enc_stride :list = [1, 1, 2, 2],
@@ -63,7 +63,7 @@ class LitCVAE(pl.LightningModule):
         self.encoder = Encoder(
             cond_layer=enc_cond_layer,
             channels=enc_channels,
-            cond_ch=enc_cond_ch,
+            cond_num=enc_cond_num,
             kernel_size=enc_kernel_size,
             stride=enc_stride,
             )
@@ -71,7 +71,7 @@ class LitCVAE(pl.LightningModule):
         self.decoder = Decoder(
             cond_layer=dec_cond_layer,
             channels=dec_channels,
-            cond_ch=dec_cond_ch,
+            cond_num=dec_cond_num,
             kernel_size=dec_kernel_size,
             stride=dec_stride,
             )
@@ -469,7 +469,7 @@ class Encoder(Base):
     def __init__(
         self,
         cond_layer: list,
-        cond_ch: int = 4,
+        cond_num: int = 4,
         channels:list = [64, 128, 256, 512],
         kernel_size: list = [9, 9, 9, 9],
         stride: list = [1, 1, 2, 2],
@@ -482,7 +482,17 @@ class Encoder(Base):
         assert len(channels) == len(kernel_size) == len(stride) == len(cond_layer)
 
         for i in range(len(channels)):
-            _in_channels = 1 + cond_ch if i == 0 and cond_layer[i] else channels[i-1] + cond_ch if cond_layer[i] else channels[i-1]
+
+            # _in_channels
+            if cond_layer[i] is True and i == 0:
+                _in_channels = 1 + cond_num
+            elif cond_layer[i] is False and i == 0:
+                _in_channels = 1
+            elif cond_layer[i] is True and i != 0:
+                _in_channels = channels[i-1] + cond_num
+            elif cond_layer[i] is False and i != 0:
+                _in_channels = channels[i-1]
+
             _out_channels = channels[i]
             _kernel_size = kernel_size[i]
             _stride = stride[i]
@@ -504,7 +514,7 @@ class Decoder(Base):
     def __init__(
         self,
         cond_layer: list,
-        cond_ch: int = 4,
+        cond_num: int = 4,
         channels: list=[256, 128, 64, 32],
         kernel_size: list = [8, 8, 8, 9],
         stride: list = [2, 1, 2, 1],
@@ -517,7 +527,7 @@ class Decoder(Base):
         assert len(channels) == len(kernel_size) == len(stride) == len(cond_layer)
 
         for i in range(len(channels)):
-            _in_channels = channels[i] + cond_ch if cond_layer[i] else channels[i]
+            _in_channels = channels[i] + cond_num if cond_layer[i] else channels[i]
             _out_channels = channels[i] // 2
             _kernel_size = kernel_size[i]
             _stride = stride[i]
