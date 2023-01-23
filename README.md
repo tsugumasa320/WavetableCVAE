@@ -43,6 +43,12 @@ WIP
 # Installation
 
 
+### docker環境作成
+
+```bash
+docker run --gpus all -it  -v $(pwd)/workspace:/workspace nvidia/cuda:11.7.1-cudnn8-devel-ubuntu20.04
+```
+
 ### 仮想環境作成
 ```bash
 conda create --name <name> python=3.8.5 -y
