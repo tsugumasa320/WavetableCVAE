@@ -320,12 +320,15 @@ class LitCVAE(pl.LightningModule):
         distance = self.distance(x, x_out)
         distance = distance + loud_dist
 
-        beta = self.get_beta_kl(
-            epoch=self.current_epoch,
-            warmup=self.warmup,
-            min_beta=self.min_kl,
-            max_beta=self.max_kl,
-        )
+        if self.warmup is not None:
+            beta = self.get_beta_kl(
+                epoch=self.current_epoch,
+                warmup=self.warmup,
+                min_beta=self.min_kl,
+                max_beta=self.max_kl,
+            )
+        else:
+            beta = 0.0
 
         # attr_reg_loss = reg_loss(z_tilde, rad_, len(data), gamma = 1.0, factor = 1.0)
 
@@ -527,7 +530,10 @@ class Decoder(Base):
         assert len(channels) == len(kernel_size) == len(stride) == len(cond_layer)
 
         for i in range(len(channels)):
-            _in_channels = channels[i] + cond_num if cond_layer[i] else channels[i]
+            if cond_layer[i]:
+                _in_channels = channels[i] + cond_num
+            else:
+                _in_channels = channels[i]
             _out_channels = channels[i] // 2
             _kernel_size = kernel_size[i]
             _stride = stride[i]
