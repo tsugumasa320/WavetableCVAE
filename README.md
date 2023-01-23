@@ -41,31 +41,31 @@ WIP
 
 # Installation
 
+
+仮想環境作成
+```bash
+conda create --name <name> python=3.8.5 -y
+conda activate <name>
+```
+インストール
+
 ```bash
 pip install -r requirements.txt
 ```
 
 # Usage
 
-DEMOの実行方法など、"hoge"の基本的な使い方を説明する
+train
 
 ```bash
-git clone https://github.com/tsugumasa320/My-reserch-project/
 python ./src/train.py
 ```
 
 # Note
 
-注意点などがあれば書く
+・　データセットは初回に自動的にダウンロードされます
 
 # Author
-
-作成情報を列挙する
-
-* 作成者: 湯谷承将(Tsugumasa Yutani)
-* 所属: 筑波大学 大学院人間総合科学学術院 人間総合科学研究群 情報学学位プログラム
-* 研究室: [Laboratory for Sound with Computing](https://lspc.slis.tsukuba.ac.jp/)
-* E-mail: tsugumasa320@gmail.com
 
 # License
 ライセンスを明示する
