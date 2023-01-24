@@ -20,6 +20,7 @@ AKWF_16k_80s/
 outputs/
 log/
 WavetableCVAE/
+__MACOSX
 
 
 *.out
