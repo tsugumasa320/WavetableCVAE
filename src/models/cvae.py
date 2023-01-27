@@ -336,16 +336,16 @@ class LitCVAE(pl.LightningModule):
         if self.wave_loss_coef is not None:
             # 波形のL1ロスを取る
             wave_loss = torch.nn.functional.l1_loss(x, x_out)
-            self.log(f"{stage}_wave_loss", wave_loss, on_step=True, on_epoch=True)
+            self.log(f"{stage}_wave_loss", wave_loss, on_step=True, on_epoch=True, batch_size=x.shape[0])
             self.loss = distance + (beta*kl) + (self.wave_loss_coef*wave_loss)
 
         else:
             self.loss = distance + (beta*kl)
 
-        self.log(f"{stage}_distance", distance, on_step=True, on_epoch=True)
-        self.log("beta", beta, on_step=True, on_epoch=True)
-        self.log(f"{stage}_kl", beta*kl, on_step=True, on_epoch=True)
-        self.log(f"{stage}_loss", self.loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log(f"{stage}_distance", distance, on_step=True, on_epoch=True, batch_size=x.shape[0])
+        self.log("beta", beta, on_step=True, on_epoch=True, batch_size=x.shape[0])
+        self.log(f"{stage}_kl", beta*kl, on_step=True, on_epoch=True, batch_size=x.shape[0])
+        self.log(f"{stage}_loss", self.loss, on_step=True, on_epoch=True, prog_bar=True, batch_size=x.shape[0])
 
         return self.loss
 
@@ -447,10 +447,10 @@ class Base(nn.Module):
         # del入れる?
         """
 
-        brightness = torch.tensor(attrs["dco_brightness"])
-        ritchness = torch.tensor(attrs["dco_richness"])
-        oddenergy = torch.tensor(attrs["dco_oddenergy"])
-        zcr = torch.tensor(attrs["dco_zcr"])
+        brightness = attrs["dco_brightness"].clone().detach()
+        ritchness = attrs["dco_richness"].clone().detach()
+        oddenergy = attrs["dco_oddenergy"].clone().detach()
+        zcr = attrs["dco_zcr"].clone().detach()
 
         y = torch.ones([x.shape[0], 1, x.shape[2]]).permute(
             2, 1, 0
