@@ -31,7 +31,7 @@ logger = logging.getLogger("unit_test")
 from check.check_Imgaudio import EvalModelInit, Visualize
 from dataio.akwd_datamodule import AWKDDataModule
 from models.components.callback import MyPrintingCallback
-# from models.VAE4Wavetable import LitAutoEncoder
+from models.arvae import LitCVAE
 from models.cvae import LitCVAE
 from tools.find_latest import find_latest_checkpoints, find_latest_versions
 from utils import model_save, torch_fix_seed

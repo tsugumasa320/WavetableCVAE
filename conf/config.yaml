@@ -1,5 +1,3 @@
-
-
 hydra:
   run:
     dir: ./log/hydra/${model._target_}/${now:%Y%m%d}T${now:%H%M%S}-${trainer.max_epochs}epoch
@@ -8,6 +6,7 @@ hydra:
 
 model:
   _target_: "src.models.cvae.LitCVAE"
+  # _target_: "src.models.arvae.LitCVAE"
 
   ## 4layer
   # enc_cond_layer: [True, True, True, True] # [Falase, False, False, False]

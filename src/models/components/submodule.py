@@ -211,14 +211,14 @@ class Distance(nn.Module):
         stfts = []
         for s in scales:
             S = torch.stft(
-                signal,
-                s,
-                int(s * (1 - overlap)),
-                s,
-                None, #torch.hann_window(s).to(signal),
-                True,
+                input=signal,
+                n_fft=s,
+                hop_length=int(s * (1 - overlap)),
+                win_length=s,
+                window=None, #torch.hann_window(s).to(signal),
+                center=True,
                 normalized=True,
                 return_complex=True,
             ).abs()
-            stfts.append(S)
+            stfts.append(S**2) #パワーで計算
         return stfts

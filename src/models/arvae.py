@@ -23,6 +23,7 @@ root = pyrootutils.setup_root(
 )
 data_dir = root / "data"
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class LitCVAE(pl.LightningModule):
     def __init__(
@@ -90,8 +91,8 @@ class LitCVAE(pl.LightningModule):
         z_dist = self.encoder(x, attrs)
         z_tilde, z_prior, prior_dist = self._reparametrize(z_dist)
 
-        output = self.decoder(z, attrs)
-        return z, kl, output
+        output = self.decoder(z_tilde, attrs)
+        return output, z_dist, prior_dist, z_tilde, z_prior
 
     def _reparametrize(self, z_dist) -> torch.Tensor:
         # Reparametrization Trick to allow gradients to backpropagate from the
@@ -106,7 +107,20 @@ class LitCVAE(pl.LightningModule):
             scale=torch.ones_like(z_dist.scale)
         )
         z_prior = prior_dist.sample()
-        return z_tilde, z_prior, prior_dist #TODO: z_tidleの次元数を確認してDecoderの処理を変更する
+        return z_tilde, z_prior, prior_dist
+
+    def compute_kld_loss(self, z_dist, prior_dist, beta, c=0.0):
+        """
+        :param z_dist: torch.distributions object
+        :param prior_dist: torch.distributions
+        :param beta: weight for kld loss
+        :param c: capacity of bottleneck channel
+        :return: kl divergence loss
+        """
+        kld = torch.distributions.kl.kl_divergence(z_dist, prior_dist)
+        kld = kld.sum(1).mean()
+        kld = beta * (kld - c).abs()
+        return kld
 
     def training_step(
         self, attrs: dict, attrs_idx: int
@@ -142,19 +156,20 @@ class LitCVAE(pl.LightningModule):
         self, batch: tuple, batch_idx: int, stage: str
     ) -> torch.Tensor:  # ロス関数定義.推論時は通らない
         x, attrs = self._prepare_batch(batch)
-        z, kl, x_out = self.forward(x, attrs)
-        assert x.shape == x_out.shape, f'in: {x.shape} != out: {x_out.shape}'
+        output, z_dist, prior_dist, z_tilde, z_prior = self.forward(x, attrs) # output, z_dist, prior_dist, z_tilde, z_prior
+        assert x.shape == output.shape, f'in: {x.shape} != out: {output.shape}'
 
         x = self._scw_batch_proc(x)
-        x_out = self._scw_batch_proc(x_out)
+        output = self._scw_batch_proc(output)
 
         # RAVE Loss
         loud_x = self.loudness(x)
-        loud_x_out = self.loudness(ｘ_out)
+        loud_x_out = self.loudness(output)
         loud_dist = (loud_x - loud_x_out).pow(2).mean()
-        distance = self.distance(x, x_out)
+        distance = self.distance(x, output)
         distance = distance + loud_dist
 
+        # KL Loss
         if self.warmup is not None:
             beta = self.get_beta_kl(
                 epoch=self.current_epoch,
@@ -164,18 +179,19 @@ class LitCVAE(pl.LightningModule):
             )
         else:
             beta = 0.0
+        kl = self.compute_kld_loss(z_dist, prior_dist, beta=beta, c=0.0)
 
         # attr_reg_loss = reg_loss(z_tilde, rad_, len(data), gamma = 1.0, factor = 1.0)
 
 
         if self.wave_loss_coef is not None:
             # 波形のL1ロスを取る
-            wave_loss = torch.nn.functional.l1_loss(x, x_out)
+            wave_loss = torch.nn.functional.l1_loss(x, output)
             self.log(f"{stage}_wave_loss", wave_loss, on_step=True, on_epoch=True)
-            self.loss = distance + (beta*kl) + (self.wave_loss_coef*wave_loss)
+            self.loss = distance + kl + (self.wave_loss_coef*wave_loss)
 
         else:
-            self.loss = distance + (beta*kl)
+            self.loss = distance + kl
 
         self.log(f"{stage}_distance", distance, on_step=True, on_epoch=True)
         self.log("beta", beta, on_step=True, on_epoch=True)
@@ -224,8 +240,6 @@ class Base(nn.Module):
         super().__init__()
 
     def _conditioning(self, x: torch.Tensor, attrs: dict) -> torch.Tensor:
-
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         # model.loadした時にエラーが出る
         # bright = ((attrs["brightness"]/100).clone().detach() # 0~1に正規化
@@ -352,7 +366,7 @@ class Encoder(Base):
             nn.Linear(in_features=x.shape[1], out_features=256), # 未設定
             nn.LeakyReLU(),
             nn.BatchNorm1d(256)
-        )
+        ).to(device)
         x = lin_layer(x)
         return x
 
@@ -382,6 +396,13 @@ class Decoder(Base):
 
         super().__init__()
 
+        self.channels = channels
+        self.dec_lin = nn.Sequential(
+            nn.Linear(in_features=16, out_features=2048),
+            nn.LeakyReLU(),
+            nn.BatchNorm1d(2048)
+        ).to(device)
+
         self.cond_layer = cond_layer
         self.deconv_layers = nn.ModuleList()
         assert len(channels) == len(kernel_size) == len(stride) == len(cond_layer)
@@ -406,6 +427,8 @@ class Decoder(Base):
         )
 
     def forward(self, x, attrs):
+        x = self.dec_lin(x)
+        x = x.view(x.shape[0], self.channels[0], -1)
 
         for i in range(len(self.deconv_layers)):
             if self.cond_layer[i] is True:
