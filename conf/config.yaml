@@ -5,8 +5,8 @@ hydra:
     dir: ./log/hydra/${model._target_}/${now:%Y%m%d}T${now:%H%M%S}-${trainer.max_epochs}epoch
 
 model:
-  _target_: "src.models.cvae.LitCVAE"
-  # _target_: "src.models.arvae.LitCVAE"
+  # _target_: "src.models.cvae.LitCVAE"
+  _target_: "src.models.arvae.LitCVAE"
 
   ## 4layer
   # enc_cond_layer: [True, True, True, True] # [Falase, False, False, False]
@@ -48,13 +48,13 @@ model:
   enc_stride: [3, 3, 3, 2]
   dec_stride: [2, 3, 3, 3]
 
-  enc_cond_num: 4
+  enc_cond_num: 4 # number of condition label channel
   dec_cond_num: 4
-  sample_points: 600
+  sample_points: 600 # number of sample points
   sample_rate: 44100
   lr: 1e-4
   duplicate_num: 6
-  warmup: 10001
+  warmup: 10001 # beta
   min_kl: 1e-4
   max_kl: 1e-1
   wave_loss_coef: null

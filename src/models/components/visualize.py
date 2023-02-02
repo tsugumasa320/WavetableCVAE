@@ -78,7 +78,8 @@ class EvalModelInit:
         with torch.no_grad():
             self.model.eval()
             self.model.to(device)
-            _mu, _log_var, wavetable = self.model(wav.to(device), attrs, latent_op)
+            # _mu, _log_var, wavetable = self.model(wav.to(device), attrs, latent_op)
+            wavetable, _, _, _, _ = self.model(wav.to(device), attrs, latent_op)
             self.model.train()
         return wavetable
 

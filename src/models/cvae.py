@@ -444,13 +444,12 @@ class Base(nn.Module):
         x = torch.cat([x, PitchSalience_y.permute(2, 1, 0)], dim=1).to(torch.float32)
         x = torch.cat([x, Hnr_y.permute(2, 1, 0)], dim=1).to(torch.float32)
 
-        # del入れる?
         """
 
-        brightness = attrs["dco_brightness"].clone().detach()
-        ritchness = attrs["dco_richness"].clone().detach()
-        oddenergy = attrs["dco_oddenergy"].clone().detach()
-        zcr = attrs["dco_zcr"].clone().detach()
+        brightness = torch.tensor(attrs["dco_brightness"])
+        ritchness = torch.tensor(attrs["dco_richness"])
+        oddenergy = torch.tensor(attrs["dco_oddenergy"])
+        zcr = torch.tensor(attrs["dco_zcr"])
 
         y = torch.ones([x.shape[0], 1, x.shape[2]]).permute(
             2, 1, 0

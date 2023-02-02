@@ -220,5 +220,5 @@ class Distance(nn.Module):
                 normalized=True,
                 return_complex=True,
             ).abs()
-            stfts.append(S) 
+            stfts.append(S)
         return stfts

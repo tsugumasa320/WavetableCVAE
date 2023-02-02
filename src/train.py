@@ -84,13 +84,13 @@ class TrainerWT(pl.LightningModule):
         print(f"Device: {device}")
         if device == "cuda":
             accelerator = "gpu"
-            devices = 1
+            devices = torch.cuda.device_count()
         elif device == "cpu":
             accelerator = "cpu"
             devices = None
         elif device == "mps":
             accelerator = "mps"
-            devices = 1
+            devices = torch.cuda.device_count()
         else:
             raise ValueError("device must be 'cuda' or 'cpu'")
 
@@ -143,10 +143,11 @@ def main(cfg: DictConfig) -> None:
         logger_level = logging.WARNING  # INFO # DEBUG
         setup_logger(logger_level=logger_level)
         cfg.trainer.max_epochs = 2
+        print(f"max_epochs: {cfg.trainer.max_epochs}")
         cfg.logger.log_model = False
         cfg.logger.offline = True
-        cfg.callbacks = None
-        # cfg.callbacks.print_every_n_steps = 1
+        # cfg.callbacks = None
+        cfg.callbacks.print_every_n_steps = 1
     else:
         print("production mode")
         logger_level = logging.ERROR

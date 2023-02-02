@@ -183,20 +183,19 @@ class LitCVAE(pl.LightningModule):
 
         # attr_reg_loss = reg_loss(z_tilde, rad_, len(data), gamma = 1.0, factor = 1.0)
 
-
         if self.wave_loss_coef is not None:
             # 波形のL1ロスを取る
-            wave_loss = torch.nn.functional.l1_loss(x, output)
-            self.log(f"{stage}_wave_loss", wave_loss, on_step=True, on_epoch=True)
-            self.loss = distance + kl + (self.wave_loss_coef*wave_loss)
+            wave_loss = torch.nn.functional.l1_loss(x, x_out)
+            self.log(f"{stage}_wave_loss", wave_loss, on_step=True, on_epoch=True, batch_size=x.shape[0])
+            self.loss = distance + (beta*kl) + (self.wave_loss_coef*wave_loss)
 
         else:
-            self.loss = distance + kl
+            self.loss = distance + (beta*kl)
 
-        self.log(f"{stage}_distance", distance, on_step=True, on_epoch=True)
-        self.log("beta", beta, on_step=True, on_epoch=True)
-        self.log(f"{stage}_kl", beta*kl, on_step=True, on_epoch=True)
-        self.log(f"{stage}_loss", self.loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log(f"{stage}_distance", distance, on_step=True, on_epoch=True, batch_size=x.shape[0])
+        self.log("beta", beta, on_step=True, on_epoch=True, batch_size=x.shape[0])
+        self.log(f"{stage}_kl", beta*kl, on_step=True, on_epoch=True, batch_size=x.shape[0])
+        self.log(f"{stage}_loss", self.loss, on_step=True, on_epoch=True, prog_bar=True, batch_size=x.shape[0])
 
         return self.loss
 
@@ -362,12 +361,12 @@ class Encoder(Base):
     def lin_layer(self, x):
 
         x = x.view(x.shape[0], -1)
-        lin_layer = nn.Sequential(
+        lin = nn.Sequential(
             nn.Linear(in_features=x.shape[1], out_features=256), # 未設定
             nn.LeakyReLU(),
-            nn.BatchNorm1d(256)
+            # nn.BatchNorm1d(256)
         ).to(device)
-        x = lin_layer(x)
+        x = lin(x)
         return x
 
     def forward(self, x, attrs):
@@ -400,7 +399,7 @@ class Decoder(Base):
         self.dec_lin = nn.Sequential(
             nn.Linear(in_features=16, out_features=2048),
             nn.LeakyReLU(),
-            nn.BatchNorm1d(2048)
+            # nn.BatchNorm1d(2048)
         ).to(device)
 
         self.cond_layer = cond_layer
