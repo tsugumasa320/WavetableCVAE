@@ -446,24 +446,16 @@ class Base(nn.Module):
 
         """
 
-        brightness = torch.tensor(attrs["dco_brightness"])
-        ritchness = torch.tensor(attrs["dco_richness"])
-        oddenergy = torch.tensor(attrs["dco_oddenergy"])
-        zcr = torch.tensor(attrs["dco_zcr"])
+        brightness = attrs["dco_brightness"].to(device, dtype=torch.float32).detach()
+        ritchness = attrs["dco_richness"].to(device, dtype=torch.float32).detach()
+        oddenergy = attrs["dco_oddenergy"].to(device, dtype=torch.float32).detach()
+        zcr = attrs["dco_zcr"].to(device, dtype=torch.float32).detach()
 
-        y = torch.ones([x.shape[0], 1, x.shape[2]]).permute(
-            2, 1, 0
-        )  # [600,1,32] or [140,256,32]
-
-        brightness_y = y.to(device) * brightness.to(device)
-        ritchness_y = y.to(device) * ritchness.to(device)
-        oddenergy_y = y.to(device) * oddenergy.to(device)
-        zcr_y = y.to(device) * zcr.to(device)
-
-        x = torch.cat([x, brightness_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-        x = torch.cat([x, ritchness_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-        x = torch.cat([x, oddenergy_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-        x = torch.cat([x, zcr_y.permute(2, 1, 0)], dim=1).to(torch.float32)
+        brightness_y = brightness.view(-1, 1, 1).expand(-1, 1, x.shape[2])
+        ritchness_y = ritchness.view(-1, 1, 1).expand(-1, 1, x.shape[2])
+        oddenergy_y = oddenergy.view(-1, 1, 1).expand(-1, 1, x.shape[2])
+        zcr_y = zcr.view(-1, 1, 1).expand(-1, 1, x.shape[2])
+        x = torch.cat([x, brightness_y, ritchness_y, oddenergy_y, zcr_y], dim=1)
 
         return x
 
