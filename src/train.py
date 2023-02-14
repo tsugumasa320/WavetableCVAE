@@ -25,39 +25,15 @@ data_dir = root / "data/AKWF_44k1_600s"
 ckpt_dir = root / "lightning_logs/*/checkpoints"
 pllog_dir = root / "lightning_logs"
 
-# ログの出力名を設定
-logger = logging.getLogger("unit_test")
-
 from check.check_Imgaudio import EvalModelInit, Visualize
 from dataio.akwd_datamodule import AWKDDataModule
 from models.components.callback import MyPrintingCallback
 from models.arvae import LitCVAE
-from models.cvae import LitCVAE
 from tools.find_latest import find_latest_checkpoints, find_latest_versions
 from utils import model_save, torch_fix_seed
 
 # from confirm.check_audiofeature import FeatureExatractorInit
 # from confirm.check_Imgaudio import *
-
-
-def setup_logger(logger_level: int = logging.INFO):
-
-    t_delta = datetime.timedelta(hours=9)
-    JST = datetime.timezone(t_delta, "JST")
-    now = datetime.datetime.now(JST)
-    # YYYYMMDDhhmmss形式に書式化
-    d = now.strftime("%Y%m%d%H%M%S")
-
-    # ログレベルの設定
-    logger.setLevel(logger_level)
-    # ログのコンソール出力の設定
-    sh = logging.StreamHandler()
-    logger.addHandler(sh)
-    # ログのファイル出力先を設定
-    fh = logging.FileHandler(root / "log" / Path(d + ".log"))
-    logger.addHandler(fh)
-    logger.info("Generation start!")
-    # TODO 設定をログ出力するようにしたい
 
 class TrainerWT(pl.LightningModule):
     def __init__(self,cfg: DictConfig):
@@ -66,19 +42,15 @@ class TrainerWT(pl.LightningModule):
         device = "cuda" if torch.cuda.is_available() else "cpu"
         torch_fix_seed(cfg.seed)
 
-        logging.info(f"Instantiating datamodule <{cfg.datamodule._target_}>")
         self.dm: pl.LightningDataModule = hydra.utils.instantiate(
             cfg.datamodule,
             data_dir= root / "data/AKWF_44k1_600s",
             )
 
-        logging.info(f"Instantiating model <{cfg.model._target_}>")
+        print("Model init...")
         self.model: pl.LightningModule = hydra.utils.instantiate(cfg.model)
-
-        logging.info("Instantiating loggers...")
+        print("Model init done.")
         logger: List[pl.LightningLoggerBase] = hydra.utils.instantiate(cfg.logger)
-
-        logging.info("Instantiating callbacks...")
         callbacks: pl.callbacks.Callback = hydra.utils.instantiate(cfg.callbacks)
 
         print(f"Device: {device}")
@@ -94,7 +66,6 @@ class TrainerWT(pl.LightningModule):
         else:
             raise ValueError("device must be 'cuda' or 'cpu'")
 
-        logging.info(f"Instantiating trainer <{cfg.trainer._target_}>")
         self.trainer: Trainer = hydra.utils.instantiate(
             cfg.trainer,
             callbacks=callbacks,
@@ -140,8 +111,6 @@ def main(cfg: DictConfig) -> None:
     if cfg.debug_mode is True:
         print("debug mode")
         subprocess.run('wandb off', shell=True)
-        logger_level = logging.WARNING  # INFO # DEBUG
-        setup_logger(logger_level=logger_level)
         cfg.trainer.max_epochs = 2
         print(f"max_epochs: {cfg.trainer.max_epochs}")
         cfg.logger.log_model = False
@@ -150,8 +119,6 @@ def main(cfg: DictConfig) -> None:
         cfg.callbacks.print_every_n_steps = 1
     else:
         print("production mode")
-        logger_level = logging.ERROR
-        logger.setLevel(logger_level)
         subprocess.run('wandb on', shell=True)
 
     # logger.info(f"Config: {cfg.pretty()}")

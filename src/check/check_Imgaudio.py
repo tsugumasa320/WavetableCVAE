@@ -20,7 +20,7 @@ import torchaudio
 
 from src.dataio import akwd_dataset  # ,DataLoader  # 追加
 from src.dataio import akwd_datamodule
-from src.models import cvae
+from src.models import arvae
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -33,7 +33,7 @@ class EvalModelInit:
         self.model = self._read_model(read_path)
 
     def _read_model(self, path: Path):
-        model = cvae.LitCVAE(
+        model = arvae.LitCVAE(
             enc_cond_layer=[True,True,True,True],
             dec_cond_layer=[True,True,True,True],
             )

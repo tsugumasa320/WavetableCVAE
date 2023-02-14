@@ -2,74 +2,7 @@ import librosa
 import numpy as np
 import torch
 import torch.nn as nn
-
-
-class Conditioning(nn.Module):
-    def __init__(self, attrs: dict, size: int = 1):
-        super().__init__()
-        self.attrs = attrs
-        self.size = size
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-        with torch.no_grad():
-            # model.loadした時にエラーが出る
-            # bright = ((attrs["brightness"]/100).clone().detach() # 0~1に正規化
-            # rough = ((attrs["roughness"]/100).clone().detach()
-            # depth = ((attrs["depth"]/100).clone().detach()
-
-            # Warningは出るがエラーは出ないので仮置き
-            # bright = torch.tensor(attrs["brightness"]/100) # 0~1に正規化
-            # rough = torch.tensor(attrs["roughness"]/100)
-            # depth = torch.tensor(attrs["depth"]/100)
-
-            Centroid = torch.tensor(self.attrs["SpectralCentroid"])
-            Spread = torch.tensor(self.attrs["SpectralSpread"])
-            Kurtosis = torch.tensor(self.attrs["SpectralKurtosis"])
-            ZeroX = torch.tensor(self.attrs["ZeroCrossingRate"])
-            Complex = torch.tensor(self.attrs["SpectralComplexity"])
-            OddEven = torch.tensor(self.attrs["OddToEvenHarmonicEnergyRatio"])
-            Dissonance = torch.tensor(self.attrs["Dissonance"])
-            PitchSalience = torch.tensor(self.attrs["PitchSalience"])
-            Hnr = torch.tensor(self.attrs["HNR"])
-
-            y = torch.ones([x.shape[0], self.size, x.shape[2]]).permute(
-                2, 1, 0
-            )  # [600,1,32] or [140,256,32]
-            # bright_y = y.to(device) * bright.to(device) # [D,C,B]*[B]
-            # rough_y = y.to(device) * rough.to(device)
-            # depth_y = y.to(device) * depth.to(device)
-
-            Centroid_y = y.to(device) * Centroid.to(device)
-            Spread_y = y.to(device) * Spread.to(device)
-            Kurtosis_y = y.to(device) * Kurtosis.to(device)
-            ZeroX_y = y.to(device) * ZeroX.to(device)
-            Complex_y = y.to(device) * Complex.to(device)
-            OddEven_y = y.to(device) * OddEven.to(device)
-            Dissonance_y = y.to(device) * Dissonance.to(device)
-            PitchSalience_y = y.to(device) * PitchSalience.to(device)
-            Hnr_y = y.to(device) * Hnr.to(device)
-
-            x = x.to(device)
-            # x = torch.cat([x, bright_y.permute(2,1,0)], dim=1).to(torch.float32)
-            # x = torch.cat([x, rough_y.permute(2,1,0)], dim=1).to(torch.float32)
-            # x = torch.cat([x, depth_y.permute(2,1,0)], dim=1).to(torch.float32)
-            x = torch.cat([x, Centroid_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-            x = torch.cat([x, Spread_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-            x = torch.cat([x, Kurtosis_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-            x = torch.cat([x, ZeroX_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-            x = torch.cat([x, Complex_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-            x = torch.cat([x, OddEven_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-            x = torch.cat([x, Dissonance_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-            x = torch.cat([x, PitchSalience_y.permute(2, 1, 0)], dim=1).to(
-                torch.float32
-            )
-            x = torch.cat([x, Hnr_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-
-        return x
-
+from einops import rearrange, reduce, repeat
 
 class Loudness(nn.Module):
     def __init__(self, sr: int, block_size: int, n_fft: int = 3600):
@@ -187,7 +120,11 @@ class Distance(nn.Module):
         return lin + log
 
     def _lin_distance(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return (torch.norm(x - y, dim=(1,2)) / torch.norm(x, dim=(1,2))).mean()
+    """
+    def _lin_distance(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         return torch.norm(x - y) / torch.norm(x)
+    """
 
     def _log_distance(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         return abs(torch.log(x + 1e-7) - torch.log(y + 1e-7)).mean()
@@ -207,7 +144,7 @@ class Distance(nn.Module):
         overlap: float
             overlap between windows ( 0 - 1 )
         """
-        # signal = rearrange(signal, "b c t -> (b c) t")
+        signal = rearrange(signal, "b c t -> (b c) t")
         stfts = []
         for s in scales:
             S = torch.stft(

@@ -82,49 +82,9 @@ class MyPrintingCallback(pl.callbacks.Callback):
                 save_name=None,
             )
 
-    def on_train_start(self, trainer: pl.Trainer, model: pl.LightningModule):
+    def on_train_start(self, trainer: pl.Trainer, model: pl.LightningModule) -> None:
         print("Training is starting")
 
     def on_train_end(self, trainer: pl.Trainer, model: pl.LightningModule) -> None:
-
-        # Todo: 学習時にここのコメントを設定できるようにする
-        on_train_end_notification(model, comment="")
-        """
-        print("Visualizing")
-        visualize = Visualize(model)
-        visualize.plot_gridspectrum(latent_op=None,show=False,save_path=None)
-        visualize.plot_gridwaveform(latent_op=None,show=False,save_path=None)
-
-        print("FeatureExatractor")
-        featureExatractorInit = FeatureExatractorInit(model)
-        featureExatractorInit.plot_condition_results(
-            mode="cond",  # latent or cond
-            dm_num=6,
-            resolution_num=100,
-            bias=1,
-            save_name= None,
-        )
-        """
         print("Training is ending")
 
-def LINENotification(comment: str) -> None:
-    import requests as rt
-
-    token = "gZJ4Mo7XWOhusuy4emJPLO5810BKPTapWw1Nvm8lfLs"
-    line = "https://notify-api.line.me/api/notify"
-    head = {"Authorization": "Bearer " + token}
-    mes = {"message": f"{comment}"}
-    rt.post(line, headers=head, data=mes)
-
-
-def on_train_end_notification(model: pl.LightningModule, comment: str) -> None:
-    d_today = datetime.date.today()
-    t_now = datetime.datetime.now().time()
-    model_name = model.__class__.__name__
-
-    comment = f"{d_today}-{t_now}-{model_name}-{comment}の学習終了！"
-    LINENotification(comment)
-
-
-if __name__ == "__main__":
-    LINENotification("test")

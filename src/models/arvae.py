@@ -7,9 +7,6 @@ import torch.nn as nn
 import logging
 import numpy as np
 
-# main.pyで宣言したloggerの子loggerオブジェクトの宣言
-logger = logging.getLogger("unit_test").getChild("sub")
-
 from src.dataio import akwd_dataset
 from src.models.components import submodule
 from torch import nn, distributions
@@ -30,22 +27,24 @@ class LitCVAE(pl.LightningModule):
         self,
         enc_cond_layer: list,
         dec_cond_layer: list,
-        enc_channels :list = [64, 128, 256, 512],
-        dec_channels :list = [256, 128, 64, 32],
-        enc_cond_num :int = 4,
-        dec_cond_num :int = 4,
-        enc_kernel_size :list = [9, 9, 9, 9],
-        dec_kernel_size :list = [8, 8, 8, 9],
-        enc_stride :list = [1, 1, 2, 2],
-        dec_stride :list = [2, 1, 2, 1],
+        enc_channels :list,
+        dec_channels :list,
+        enc_cond_num :int,
+        dec_cond_num :int,
+        enc_kernel_size :list,
+        dec_kernel_size :list,
+        enc_stride :list,
+        dec_stride :list,
         sample_points: int = 600,
         sample_rate :int = 44100,
-        lr: float = 1e-5,
+        lr: float = 1e-3,
         duplicate_num:int = 6,
         warmup: int = 2000,
         min_kl: float = 1e-4,
         max_kl: float = 5e-1,
         wave_loss_coef: float = None,
+        enc_lin_layer_dim: list = None,
+        dec_lin_layer_dim: list = None,
 
     ):  # Define computations here
         super().__init__()
@@ -69,6 +68,7 @@ class LitCVAE(pl.LightningModule):
             cond_num=enc_cond_num,
             kernel_size=enc_kernel_size,
             stride=enc_stride,
+            lin_layer_dim=enc_lin_layer_dim,
             )
 
         self.decoder = Decoder(
@@ -77,6 +77,7 @@ class LitCVAE(pl.LightningModule):
             cond_num=dec_cond_num,
             kernel_size=dec_kernel_size,
             stride=dec_stride,
+            lin_layer_dim=dec_lin_layer_dim,
             )
 
         self.loudness = submodule.Loudness(sample_rate, block_size=sample_points * duplicate_num, n_fft=sample_points * duplicate_num)
@@ -159,8 +160,9 @@ class LitCVAE(pl.LightningModule):
         output, z_dist, prior_dist, z_tilde, z_prior = self.forward(x, attrs) # output, z_dist, prior_dist, z_tilde, z_prior
         assert x.shape == output.shape, f'in: {x.shape} != out: {output.shape}'
 
-        x = self._scw_batch_proc(x)
-        output = self._scw_batch_proc(output)
+        x = x.repeat(1, 1, self.duplicate_num)
+        output = output.repeat(1, 1, self.duplicate_num)
+        assert x.shape == output.shape, f'in: {x.shape} != out: {output.shape}'
 
         # RAVE Loss
         loud_x = self.loudness(x)
@@ -185,7 +187,7 @@ class LitCVAE(pl.LightningModule):
 
         if self.wave_loss_coef is not None:
             # 波形のL1ロスを取る
-            wave_loss = torch.nn.functional.l1_loss(x, x_out)
+            wave_loss = torch.nn.functional.l1_loss(x, output)
             self.log(f"{stage}_wave_loss", wave_loss, on_step=True, on_epoch=True, batch_size=x.shape[0])
             self.loss = distance + (beta*kl) + (self.wave_loss_coef*wave_loss)
 
@@ -198,31 +200,6 @@ class LitCVAE(pl.LightningModule):
         self.log(f"{stage}_loss", self.loss, on_step=True, on_epoch=True, prog_bar=True, batch_size=x.shape[0])
 
         return self.loss
-
-    def _scw_batch_proc(self, x: torch.Tensor) -> torch.Tensor:
-        # batchを1つづつにする
-        batch_size = len(x[:])
-        for i in range(batch_size):
-            single_channel_scw = x[i, :, :]  # ex: [32,1,600] -> [1,1,600]
-            if i == 0:
-                tmp = self._scw_combain(single_channel_scw)
-            else:
-                tmp = torch.cat(
-                    [tmp, self._scw_combain(single_channel_scw)]
-                ) # ex: [1,3600] -> [i,3600]
-        return tmp
-
-    def _scw_combain(self, scw: torch.Tensor) -> torch.Tensor:
-        # scwをcatする
-        scw = scw.reshape(self.sample_points)  # [1,1,600] -> [600]
-
-        for i in range(self.duplicate_num):
-            if i == 0:
-                tmp = scw
-            else:
-                tmp = torch.cat([tmp, scw])
-        tmp = tmp.reshape(1, -1)  # ex: [3600] -> [1,3600]
-        return tmp
 
     def _prepare_batch(
         self, batch: tuple
@@ -238,17 +215,12 @@ class Base(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def _conditioning(self, x: torch.Tensor, attrs: dict) -> torch.Tensor:
+    def _to_tensor(self, x: torch.Tensor) -> torch.Tensor:
+        if isinstance(x, torch.Tensor):
+            return x.to(device, dtype=torch.float32)
+        return torch.tensor(x, device=device, dtype=torch.float32)
 
-        # model.loadした時にエラーが出る
-        # bright = ((attrs["brightness"]/100).clone().detach() # 0~1に正規化
-        # rough = ((attrs["roughness"]/100).clone().detach()
-        # depth = ((attrs["depth"]/100).clone().detach()
-
-        # Warningは出るがエラーは出ないので仮置き
-        # bright = torch.tensor(attrs["brightness"]/100) # 0~1に正規化
-        # rough = torch.tensor(attrs["roughness"]/100)
-        # depth = torch.tensor(attrs["depth"]/100)
+    def _conv_conditioning(self, x: torch.Tensor, attrs: dict) -> torch.Tensor:
 
         """
         Centroid = torch.tensor(attrs["SpectralCentroid"])
@@ -293,7 +265,7 @@ class Base(nn.Module):
         x = torch.cat([x, Hnr_y.permute(2, 1, 0)], dim=1).to(torch.float32)
 
         # del入れる?
-        """
+
 
         brightness = torch.tensor(attrs["dco_brightness"])
         ritchness = torch.tensor(attrs["dco_richness"])
@@ -313,6 +285,42 @@ class Base(nn.Module):
         x = torch.cat([x, ritchness_y.permute(2, 1, 0)], dim=1).to(torch.float32)
         x = torch.cat([x, oddenergy_y.permute(2, 1, 0)], dim=1).to(torch.float32)
         x = torch.cat([x, zcr_y.permute(2, 1, 0)], dim=1).to(torch.float32)
+        """
+
+        brightness = self._to_tensor(attrs["dco_brightness"])
+        ritchness = self._to_tensor(attrs["dco_richness"])
+        oddenergy = self._to_tensor(attrs["dco_oddenergy"])
+        zcr = self._to_tensor(attrs["dco_zcr"])
+
+        brightness_y = brightness.view(-1, 1, 1).expand(-1, 1, x.shape[2])
+        ritchness_y = ritchness.view(-1, 1, 1).expand(-1, 1, x.shape[2])
+        oddenergy_y = oddenergy.view(-1, 1, 1).expand(-1, 1, x.shape[2])
+        zcr_y = zcr.view(-1, 1, 1).expand(-1, 1, x.shape[2])
+        x = torch.cat([x, brightness_y, ritchness_y, oddenergy_y, zcr_y], dim=1)
+
+        return x
+
+    def _lin_conditioning(self, x: torch.Tensor, attrs: dict) -> torch.Tensor:
+        """Linear conditioning.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+            attrs (dict): Attributes.
+        """
+
+        brightness = self._to_tensor(attrs["dco_brightness"])
+        ritchness = self._to_tensor(attrs["dco_richness"])
+        oddenergy = self._to_tensor(attrs["dco_oddenergy"])
+        zcr = self._to_tensor(attrs["dco_zcr"])
+
+        # (batch_size, L)
+        brightness = brightness.view(-1, 1).expand(x.shape[0], 1)
+        ritchness = ritchness.view(-1, 1).expand(x.shape[0], 1)
+        oddenergy = oddenergy.view(-1, 1).expand(x.shape[0], 1)
+        zcr = zcr.view(-1, 1).expand(x.shape[0], 1)
+
+        # (batch_size, 1, L)
+        x = torch.cat([x, brightness, ritchness, oddenergy, zcr], dim=1)
 
         return x
 
@@ -324,6 +332,7 @@ class Encoder(Base):
         channels:list = [64, 128, 256, 512],
         kernel_size: list = [9, 9, 9, 9],
         stride: list = [1, 1, 2, 2],
+        lin_layer_dim :list = [1024, 512, 256],
         ):
 
         super().__init__()
@@ -332,7 +341,6 @@ class Encoder(Base):
         self.cond_layer = cond_layer
         self.conv_layers = nn.ModuleList()
         assert len(channels) == len(kernel_size) == len(stride) == len(cond_layer)
-
         for i in range(len(channels)):
 
             # _in_channels
@@ -355,19 +363,25 @@ class Encoder(Base):
             )
             self.conv_layers.append(layer)
 
-            self.enc_mean = nn.Linear(256, 16)
-            self.enc_log_std = nn.Linear(256, 16)
-
+            self.flatten = nn.Flatten()
+            self.lin_layer = nn.Sequential(
+                nn.Linear(in_features=lin_layer_dim[0], out_features=lin_layer_dim[1]),
+                nn.LeakyReLU()
+            )
+            self.enc_mean = nn.Linear(lin_layer_dim[1], lin_layer_dim[2])
+            self.enc_scale = nn.Linear(lin_layer_dim[1], lin_layer_dim[2])
+    """
     def lin_layer(self, x):
 
         x = x.view(x.shape[0], -1)
         lin = nn.Sequential(
-            nn.Linear(in_features=x.shape[1], out_features=256), # 未設定
-            nn.LeakyReLU(),
-            # nn.BatchNorm1d(256)
+            nn.Linear(in_features=x.shape[1], out_features=), # 未設定
+            nn.LeakyReLU()
         ).to(device)
+
         x = lin(x)
         return x
+    """
 
     def forward(self, x, attrs):
         for i, layer in enumerate(self.conv_layers):
@@ -375,10 +389,15 @@ class Encoder(Base):
                 x = self._conditioning(x, attrs)
             x = layer(x)
 
+        x = self.flatten(x)
         x = self.lin_layer(x)
+
+        # condition入れるならここで
         z_mean = self.enc_mean(x)
-        z_log_std = self.enc_log_std(x) # モデルの作り直しかな.大変だな
-        z_distribution = distributions.Normal(loc=z_mean, scale=torch.exp(z_log_std))
+        z_scale = self.enc_scale(x)
+        z_std = nn.functional.softplus(z_scale) + 1e-4
+
+        z_distribution = distributions.Normal(loc=z_mean, scale=z_std)
 
         return z_distribution
 
@@ -391,15 +410,17 @@ class Decoder(Base):
         channels: list=[256, 128, 64, 32],
         kernel_size: list = [8, 8, 8, 9],
         stride: list = [2, 1, 2, 1],
+        lin_layer_dim: list = [256, 512, 1024]
         ):
 
         super().__init__()
 
         self.channels = channels
         self.dec_lin = nn.Sequential(
-            nn.Linear(in_features=16, out_features=2048),
+            nn.Linear(in_features=lin_layer_dim[0] + 4, out_features=lin_layer_dim[1]),
             nn.LeakyReLU(),
-            # nn.BatchNorm1d(2048)
+            nn.Linear(in_features=lin_layer_dim[1], out_features=lin_layer_dim[2]),
+            nn.LeakyReLU(),
         ).to(device)
 
         self.cond_layer = cond_layer
@@ -426,12 +447,13 @@ class Decoder(Base):
         )
 
     def forward(self, x, attrs):
+
+        x = self._lin_conditioning(x, attrs)
         x = self.dec_lin(x)
         x = x.view(x.shape[0], self.channels[0], -1)
 
         for i in range(len(self.deconv_layers)):
             if self.cond_layer[i] is True:
-                logger.info(f"Decoder: conditioning[{i}]")
                 x = self._conditioning(x, attrs)
             x = self.deconv_layers[i](x)
         x = self.convout(x)
