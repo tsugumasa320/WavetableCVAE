@@ -368,8 +368,8 @@ class Encoder(Base):
                 nn.Linear(in_features=lin_layer_dim[0], out_features=lin_layer_dim[1]),
                 nn.LeakyReLU()
             )
-            self.enc_mean = nn.Linear(lin_layer_dim[1], lin_layer_dim[2])
-            self.enc_scale = nn.Linear(lin_layer_dim[1], lin_layer_dim[2])
+            self.enc_mean = nn.Linear(lin_layer_dim[1]+4, lin_layer_dim[2])
+            self.enc_scale = nn.Linear(lin_layer_dim[1]+4, lin_layer_dim[2])
     """
     def lin_layer(self, x):
 
@@ -392,7 +392,7 @@ class Encoder(Base):
         x = self.flatten(x)
         x = self.lin_layer(x)
 
-        # condition入れるならここで
+        x = self._lin_conditioning(x, attrs)
         z_mean = self.enc_mean(x)
         z_scale = self.enc_scale(x)
         z_std = nn.functional.softplus(z_scale) + 1e-4
