@@ -366,10 +366,12 @@ class Encoder(Base):
             self.flatten = nn.Flatten()
             self.lin_layer = nn.Sequential(
                 nn.Linear(in_features=lin_layer_dim[0], out_features=lin_layer_dim[1]),
+                nn.LeakyReLU(),
+                nn.Linear(in_features=lin_layer_dim[1], out_features=lin_layer_dim[2]),
                 nn.LeakyReLU()
             )
-            self.enc_mean = nn.Linear(lin_layer_dim[1]+4, lin_layer_dim[2])
-            self.enc_scale = nn.Linear(lin_layer_dim[1]+4, lin_layer_dim[2])
+            self.enc_mean = nn.Linear(lin_layer_dim[2]+4, lin_layer_dim[3])
+            self.enc_scale = nn.Linear(lin_layer_dim[2]+4, lin_layer_dim[3])
     """
     def lin_layer(self, x):
 
@@ -420,6 +422,8 @@ class Decoder(Base):
             nn.Linear(in_features=lin_layer_dim[0] + 4, out_features=lin_layer_dim[1]),
             nn.LeakyReLU(),
             nn.Linear(in_features=lin_layer_dim[1], out_features=lin_layer_dim[2]),
+            nn.LeakyReLU(),
+            nn.Linear(in_features=lin_layer_dim[2], out_features=lin_layer_dim[3]),
             nn.LeakyReLU(),
         ).to(device)
 
