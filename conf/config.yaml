@@ -28,8 +28,8 @@ model:
   # dec_stride: [2, 3, 4, 4]
 
   ## 6layer
-  enc_cond_layer: [False, False, False, False, False, False]
-  dec_cond_layer: [False, False, False, False, False, False]
+  enc_cond_layer: [True, True, True, True, True, True]
+  dec_cond_layer: [True, True, True, True, True, True]
   enc_channels: [16, 32, 64, 128, 256, 512]
   dec_channels: [512, 256, 128, 64, 32, 16]
   enc_kernel_size: [3, 7, 7, 7, 7, 5]
