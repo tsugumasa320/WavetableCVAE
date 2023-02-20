@@ -162,7 +162,8 @@ class Visualize(EvalModelInit):
 
         plt.suptitle("grid_spectrum")
 
-        for i, data in enumerate(self.dm.train_dataset):
+        # for i, data in enumerate(self.dm.train_dataset):
+        for i, data in enumerate(self.dm.test_dataset):
             if i >= nrows * ncols:
                 break
             x, attrs = data
@@ -208,7 +209,8 @@ class Visualize(EvalModelInit):
 
         plt.suptitle("grid_waveform")
 
-        for i, data in enumerate(self.dm.train_dataset):
+        # for i, data in enumerate(self.dm.train_dataset):
+        for i, data in enumerate(self.dm.test_dataset):
             if i >= nrows * ncols:
                 break
             x, attrs = data
@@ -327,7 +329,8 @@ class FeatureExatractorInit(EvalModelInit):
         mode: str = "cond",
     ):
 
-        wavetable, attrs = self.dm.train_dataset[dm_num]
+        # wavetable, attrs = self.dm.train_dataset[dm_num]
+        wavetable, attrs = self.dm.test_dataset[dm_num]
 
         cond_label = []
         est_label = []
@@ -458,7 +461,8 @@ class FeatureExatractorInit(EvalModelInit):
             for i in range(len(attrs_label) + 2):
 
                 if i == 0:
-                    wavetable, attrs = self.dm.train_dataset[j]
+                    # wavetable, attrs = self.dm.train_dataset[j]
+                    wavetable, attrs = self.dm.test_dataset[j]
                     axes[j, i].plot(wavetable.squeeze(0))
                     axes[j, i].set_title(attrs["name"])
                     axes[j, i].grid(True)

@@ -28,8 +28,8 @@ model:
   # dec_stride: [2, 3, 4, 4]
 
   ## 6layer
-  enc_cond_layer: [True, True, True, True, True, True]
-  dec_cond_layer: [True, True, True, True, True, True]
+  enc_cond_layer: [False, False, False, False, False, False]
+  dec_cond_layer: [False, False, False, False, False, False]
   enc_channels: [16, 32, 64, 128, 256, 512]
   dec_channels: [512, 256, 128, 64, 32, 16]
   enc_kernel_size: [3, 7, 7, 7, 7, 5]
@@ -45,7 +45,7 @@ model:
   sample_rate: 44100
   lr: 1e-4
   duplicate_num: 6
-  warmup: 10001 # beta
+  warmup: 1 # beta
   min_kl: 1e-4
   max_kl: 1e-1
   wave_loss_coef: null
@@ -70,7 +70,7 @@ logger:
 
 trainer:
   _target_: pytorch_lightning.Trainer
-  max_epochs: 10001
+  max_epochs: 20001
   enable_checkpointing: True
   auto_lr_find: True
   auto_scale_batch_size: True
@@ -79,7 +79,7 @@ callbacks:
   _target_: "src.models.components.callback.MyPrintingCallback"
   print_every_n_steps: 1000
 
-resume: null
+resume: null # "/home/ubuntu/My-reserch-project/WavetableCVAE/vjrxrzma/checkpoints/epoch=17293-step=2702205.ckpt"
 # "/workspace/My-reserch-project/WavetableCVAE/rp6j1uld/checkpoints/epoch=1999-step=198000.ckpt"
 save: False
 seed: 42
