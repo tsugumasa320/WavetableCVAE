@@ -33,7 +33,6 @@ from tqdm import tqdm
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
 class EvalModelInit:
     def __init__(self, model):
         self.dataset = akwd_dataset.AKWDDataset(root=data_dir)
@@ -149,6 +148,7 @@ class Visualize(EvalModelInit):
         latent_op=None,
         show: bool = False,
         save_path: Path or str = None,
+        wandb_log: bool = True,
     ):
 
         # 訓練データの波形を見る
@@ -186,7 +186,8 @@ class Visualize(EvalModelInit):
 
         if show is True:
             plt.show()
-        wandb.log({"gridspec": fig})
+        if wandb_log is True:
+            wandb.log({"gridspec": fig})
 
     def plot_gridwaveform(
         self,
@@ -196,6 +197,7 @@ class Visualize(EvalModelInit):
         latent_op=None,
         show: bool = False,
         save_path: Path or str = None,
+        wandb_log: bool = True,
     ):
 
         # 訓練データの波形を見る
@@ -227,7 +229,8 @@ class Visualize(EvalModelInit):
             plt.savefig(save_path / "gridwave-x.png")
         if show is True:
             plt.show()
-        wandb.log({"gridwave": fig})
+        if wandb_log is True:
+            wandb.log({"gridwave": fig})
 
 
 class FeatureExatractorInit(EvalModelInit):
@@ -440,6 +443,7 @@ class FeatureExatractorInit(EvalModelInit):
         resolution_num: int = 10,
         bias: int = 1,
         save_name: str = "test",
+        wandb_log: bool = True,
     ):
 
         fig, axes = plt.subplots(
@@ -518,9 +522,10 @@ class FeatureExatractorInit(EvalModelInit):
         """
 
         if save_name is not None:
-            plt.savefig(save_name + ".png")
-        plt.show()
-        wandb.log({"AudioFeature": fig})
+            plt.savefig(save_name)
+        # plt.show()
+        if wandb_log:
+            wandb.log({"AudioFeature": fig})
 
 # Preprocess
 
