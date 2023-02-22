@@ -435,7 +435,7 @@ class FeatureExatractorInit(EvalModelInit):
 
         return est_data
 
-    def __call__(
+    def plot_all(
         self,
         attrs_label: list,
         mode="cond",
@@ -446,27 +446,17 @@ class FeatureExatractorInit(EvalModelInit):
         wandb_log: bool = True,
     ):
 
-        fig, axes = plt.subplots(
-            dm_num, len(attrs_label) + 2, figsize=(30, 3 * dm_num), tight_layout=True
-        )
         x = np.array(range(resolution_num + 1)) / resolution_num
-
-        """
-        CentroidMAE = 0
-        SpreadMAE = 0
-        KurtosisMAE = 0
-        ZeroXMAE = 0
-        OddMAE = 0
-        PsMAE = 0
-        HnrMAE = 0
-        """
-
-        for j in tqdm(range(dm_num)):
+        j = 0
+        for idx in tqdm(range(4158)):
+            fig, axes = plt.subplots(
+                dm_num, len(attrs_label) + 2, figsize=(22, 3 * dm_num), tight_layout=True, squeeze=False
+            )
             for i in range(len(attrs_label) + 2):
 
                 if i == 0:
                     # wavetable, attrs = self.dm.train_dataset[j]
-                    wavetable, attrs = self.dm.test_dataset[j]
+                    wavetable, attrs = self.dm.test_dataset[idx]
                     axes[j, i].plot(wavetable.squeeze(0))
                     axes[j, i].set_title(attrs["name"])
                     axes[j, i].grid(True)
@@ -496,36 +486,13 @@ class FeatureExatractorInit(EvalModelInit):
                     axes[j, i].set_xlabel("input", size=10)
                     axes[j, i].set_ylabel("output", size=10)
                     axes[j, i].legend()
-        """
-                    if i == 2:
-                        CentroidMAE += np.mean(np.array(estimate) - np.array(target))
-                    elif i == 3:
-                        SpreadMAE += np.mean(np.array(estimate) - np.array(target))
-                    elif i == 4:
-                        KurtosisMAE += np.mean(np.array(estimate) - np.array(target))
-                    elif i == 5:
-                        ZeroXMAE += np.mean(np.array(estimate) - np.array(target))
-                    elif i == 6:
-                        OddMAE += np.mean(np.array(estimate) - np.array(target))
-                    elif i == 7:
-                        PsMAE += np.mean(np.array(estimate) - np.array(target))
-                    elif i == 8:
-                        HnrMAE += np.mean(np.array(estimate) - np.array(target))
 
-        print("CentroidMAE :", CentroidMAE)
-        print("SpreadMAE :", SpreadMAE)
-        print("KurtosisMAE :", KurtosisMAE)
-        print("ZeroXMAE :", ZeroXMAE)
-        print("OddMAE :", OddMAE)
-        print("PsMAE :", PsMAE)
-        print("HNRMAE :", HnrMAE)
-        """
-
-        if save_name is not None:
-            plt.savefig(save_name)
-        # plt.show()
-        if wandb_log:
-            wandb.log({"AudioFeature": fig})
+            if save_name is not None:
+                plt.savefig(f'{save_name}/{attrs["name"]}.png')
+                plt.close()
+            # plt.show()
+            if wandb_log:
+                wandb.log({"AudioFeature": fig})
 
 # Preprocess
 

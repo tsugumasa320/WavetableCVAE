@@ -49,13 +49,13 @@ def confirm_script(model,save_name):
         "dco_brightness",
         "dco_richness",
         "dco_oddenergy",
-        "dco_zcr",
+        # "dco_zcr",
     ]
 
-    featureExatractorInit(
+    featureExatractorInit.plot_all(
         attrs_label=attrs_label,
         mode="cond",  # latent or cond
-        dm_num=2,
+        dm_num=1,
         resolution_num=100,
         bias=1,
         save_name=save_name,
@@ -76,5 +76,4 @@ if __name__ == "__main__":
     save_name = output_dir / "featureExatractor"
 
     # モデルの評価
-    for i in tqdm(range(50)):
-        confirm_script(model,save_name=f"{save_name}/cond_{i}.png")
+    confirm_script(model,save_name=save_name)

@@ -50,8 +50,8 @@ def check_wave(model):
 
         eval_x = emi._eval_waveform(x, attrs)
         # tensorを反対から
-        eval_x = x.flip(1)
-        plt.plot(eval_x.cpu().squeeze(0))
+        eval_x = eval_x.flip(1).cpu()
+        plt.plot(eval_x.squeeze(0))
         # plt.suptitle(attrs["name"])
         plt.tight_layout()
         plt.savefig(output_dir / "oscillo" / f"{attrs['name']}.jpeg")
@@ -115,6 +115,6 @@ if __name__ == "__main__":
     )
 
     # モデルの評価
-    # check_wave(model)
-    check_spec(model)
+    check_wave(model)
+    # check_spec(model)
 
