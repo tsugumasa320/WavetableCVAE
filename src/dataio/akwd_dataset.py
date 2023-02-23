@@ -57,6 +57,7 @@ class AKWDDataset(torch.utils.data.Dataset):
 
         # attrs['audio'] = waveform
         attrs["name"] = Path(self.wave_paths[idx]).name
+        print(f"attrs['name'] : {attrs['name']}")
 
         if platform.system() == "Linux":
             ess_audio = ess.MonoLoader(filename=self.wave_paths[idx])()

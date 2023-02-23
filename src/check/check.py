@@ -53,6 +53,7 @@ def confirm_script(model,save_name):
     ]
 
     featureExatractorInit.plot_all(
+        
         attrs_label=attrs_label,
         mode="cond",  # latent or cond
         dm_num=1,
@@ -73,7 +74,7 @@ if __name__ == "__main__":
     model = LitCVAE.load_from_checkpoint(
         checkpoint_path=ckpt_path,
     )
-    save_name = output_dir / "featureExatractor"
+    save_name = output_dir / "test" / "featureExatractor"
 
     # モデルの評価
     confirm_script(model,save_name=save_name)

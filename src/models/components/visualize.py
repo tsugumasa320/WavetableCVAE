@@ -324,6 +324,8 @@ class FeatureExatractorInit(EvalModelInit):
 
     def CondOrLatentOperate(
         self,
+        wavetable,
+        attrs,
         label_name: str,
         normalize_method: str,
         dm_num: int = 0,
@@ -331,9 +333,6 @@ class FeatureExatractorInit(EvalModelInit):
         bias: int = 1,
         mode: str = "cond",
     ):
-
-        # wavetable, attrs = self.dm.train_dataset[dm_num]
-        wavetable, attrs = self.dm.test_dataset[dm_num]
 
         cond_label = []
         est_label = []
@@ -450,13 +449,14 @@ class FeatureExatractorInit(EvalModelInit):
         j = 0
         for idx in tqdm(range(4158)):
             fig, axes = plt.subplots(
-                dm_num, len(attrs_label) + 2, figsize=(22, 3 * dm_num), tight_layout=True, squeeze=False
+                dm_num, len(attrs_label), figsize=(15, 3 * dm_num), tight_layout=True, squeeze=False
             )
-            for i in range(len(attrs_label) + 2):
+            for i in range(len(attrs_label)):
 
+                wavetable, attrs = self.dm.test_dataset[idx]
+                """
                 if i == 0:
                     # wavetable, attrs = self.dm.train_dataset[j]
-                    wavetable, attrs = self.dm.test_dataset[idx]
                     axes[j, i].plot(wavetable.squeeze(0))
                     axes[j, i].set_title(attrs["name"])
                     axes[j, i].grid(True)
@@ -466,10 +466,15 @@ class FeatureExatractorInit(EvalModelInit):
                     axes[j, i].plot(spectrum.squeeze(0))
                     axes[j, i].set_title("spectrum : " + attrs["name"])
                     axes[j, i].grid(True)
+                """
+                if i == 100:
+                    pass
 
                 else:
                     target, estimate = self.CondOrLatentOperate(
-                        attrs_label[i - 2],
+                        wavetable,
+                        attrs,
+                        attrs_label[i],
                         normalize_method=None,
                         dm_num=j,
                         resolution_num=resolution_num,
@@ -477,10 +482,10 @@ class FeatureExatractorInit(EvalModelInit):
                         mode=mode,
                     )
 
-                    axes[j, i].set_title(attrs_label[i - 2])
+                    axes[j, i].set_title(attrs_label[i])
                     axes[j, i].grid(True)
-                    axes[j, i].plot(x, target, label="condition value")
-                    axes[j, i].plot(x, estimate, label="estimate value")
+                    axes[j, i].plot(x, target, label="ideal value")
+                    axes[j, i].plot(x, estimate, label="condition value")
                     axes[j, i].set_xlim(0, 1)
                     axes[j, i].set_ylim(0, 1)
                     axes[j, i].set_xlabel("input", size=10)

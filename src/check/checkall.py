@@ -36,18 +36,19 @@ from src.models.components.visualize import FeatureExatractorInit, Visualize, Ev
 from tqdm import tqdm
 
 
-def check_wave(model):
+def check_wave(model, label):
 
     emi = EvalModelInit(model)
 
     for i, data in enumerate(tqdm(emi.dm.test_dataset)):
         #if i >= 10:
         #    break
-        x, attrs = emi.dataset[i]
+        x, attrs = emi.dm.test_dataset[i]
         # plt
         plt.figure(figsize=(5, 4))
         plt.plot(x.cpu().squeeze(0))
 
+        attrs['dco_oddenergy'] = label
         eval_x = emi._eval_waveform(x, attrs)
         # tensorを反対から
         eval_x = eval_x.flip(1).cpu()
@@ -57,54 +58,66 @@ def check_wave(model):
         plt.savefig(output_dir / "oscillo" / f"{attrs['name']}.jpeg")
         plt.close()
 
+        """
         # 音を保存
         torchaudio.save(
-            output_dir / "org_wave" / f"{attrs['name']}",
+            output_dir / "test" / "org_wave" / f"{attrs['name']}",
             x,
             44100,
         )
+        """
 
+        # dir 作成
+        if not os.path.exists(output_dir / "test" / "recon_wave" / f"w_{attrs['dco_oddenergy']}"):
+            os.makedirs(output_dir / "test" / "recon_wave" / f"w_{attrs['dco_oddenergy']}")
         # 音を保存
         torchaudio.save(
-            output_dir / "recon_wave" / f"recon_{attrs['name']}",
+            output_dir / "test" / "recon_wave" / f"w_{attrs['dco_oddenergy']}" / f"recon_{attrs['name']}",
             eval_x,
             44100,
         )
 
 
-def check_spec(model):
+def check_spec(model, label):
 
     emi = EvalModelInit(model)
 
     for i, data in enumerate(tqdm(emi.dm.test_dataset)):
         #if i >= 10:
         #    break
-        x, attrs = emi.dataset[i]
+        x, attrs = emi.dm.test_dataset[i]
         # plt
         plt.figure(figsize=(5, 4))
 
+        attrs['dco_oddenergy'] = label
         eval_x = emi.model_eval(x.unsqueeze(0), attrs)
         eval_x = eval_x.squeeze(0).to(device)
 
         x = emi._scw_combain_spec(x, 6)
         eval_x = emi._scw_combain_spec(eval_x, 6)
 
+        """
         plt.plot(x.cpu().squeeze(0))
         # plt.suptitle(attrs["name"])
         plt.tight_layout()
-        plt.savefig(output_dir / "org_spec" / f"{attrs['name']}.jpeg")
+        plt.savefig(output_dir / "test" / "org_spec" / f"{attrs['name']}.jpeg")
         plt.close()
+        """
+
+        # dir 作成
+        if not os.path.exists(output_dir / "test" / "recon_spec" / f"w_{attrs['dco_oddenergy']}"):
+            os.makedirs(output_dir / "test" / "recon_spec" / f"w_{attrs['dco_oddenergy']}")
 
         plt.plot(eval_x.cpu().squeeze(0))
         # plt.suptitle(attrs["name"])
         plt.tight_layout()
-        plt.savefig(output_dir / "recon_spec" / f"recon_{attrs['name']}.jpeg")
+        plt.savefig(output_dir / "test" / "recon_spec" / f"w_{attrs['dco_oddenergy']}" / f"recon_{attrs['name']}.jpeg")
         plt.close()
 
 
 if __name__ == "__main__":
     # データセットの読み込み
-    dataset = akwd_dataset.AKWDDataset(data_dir)
+    dataset = akwd_dataset.AKWDDataset(data_dir/"test")
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
 
     ckpt_path = "/home/ubuntu/My-reserch-project/WavetableCVAE/d8r9zree/checkpoints/epoch=20000-step=2970198.ckpt"
@@ -115,6 +128,7 @@ if __name__ == "__main__":
     )
 
     # モデルの評価
-    check_wave(model)
-    # check_spec(model)
+    for label in [0, 0.25, 0.5, 0.75, 1.0]:
+        check_wave(model, label)
+        check_spec(model, label)
 
