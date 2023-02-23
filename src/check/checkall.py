@@ -36,7 +36,7 @@ from src.models.components.visualize import FeatureExatractorInit, Visualize, Ev
 from tqdm import tqdm
 
 
-def check_wave(model, label):
+def check_wave(model, label_name, label_value):
 
     emi = EvalModelInit(model)
 
@@ -48,14 +48,18 @@ def check_wave(model, label):
         plt.figure(figsize=(5, 4))
         plt.plot(x.cpu().squeeze(0))
 
-        attrs['dco_oddenergy'] = label
+        attrs[label_name] = label_value
+
         eval_x = emi._eval_waveform(x, attrs)
         # tensorを反対から
         eval_x = eval_x.flip(1).cpu()
         plt.plot(eval_x.squeeze(0))
         # plt.suptitle(attrs["name"])
         plt.tight_layout()
-        plt.savefig(output_dir / "oscillo" / f"{attrs['name']}.jpeg")
+        # dir 作成
+        if not os.path.exists(output_dir / "test" / "oscillo" / f"w_{attrs[label_name]}"):
+            os.makedirs(output_dir / "test" / "oscillo" / f"w_{attrs[label_name]}")
+        plt.savefig(output_dir / "test" / "oscillo" / f"w_{attrs[label_name]}" / f"{attrs['name']}.jpeg")
         plt.close()
 
         """
@@ -66,19 +70,20 @@ def check_wave(model, label):
             44100,
         )
         """
-
+        """
         # dir 作成
-        if not os.path.exists(output_dir / "test" / "recon_wave" / f"w_{attrs['dco_oddenergy']}"):
-            os.makedirs(output_dir / "test" / "recon_wave" / f"w_{attrs['dco_oddenergy']}")
+        if not os.path.exists(output_dir / "test" / "recon_wave" / f"b_{attrs[label_name]}"):
+            os.makedirs(output_dir / "test" / "recon_wave" / f"b_{attrs[label_name]}")
         # 音を保存
         torchaudio.save(
-            output_dir / "test" / "recon_wave" / f"w_{attrs['dco_oddenergy']}" / f"recon_{attrs['name']}",
+            output_dir / "test" / "recon_wave" / f"b_{attrs[label_name]}" / f"recon_{attrs['name']}",
             eval_x,
             44100,
         )
+        """
 
 
-def check_spec(model, label):
+def check_spec(model, label_name, label_value):
 
     emi = EvalModelInit(model)
 
@@ -89,7 +94,7 @@ def check_spec(model, label):
         # plt
         plt.figure(figsize=(5, 4))
 
-        attrs['dco_oddenergy'] = label
+        attrs[label_name] = label_value
         eval_x = emi.model_eval(x.unsqueeze(0), attrs)
         eval_x = eval_x.squeeze(0).to(device)
 
@@ -105,13 +110,13 @@ def check_spec(model, label):
         """
 
         # dir 作成
-        if not os.path.exists(output_dir / "test" / "recon_spec" / f"w_{attrs['dco_oddenergy']}"):
-            os.makedirs(output_dir / "test" / "recon_spec" / f"w_{attrs['dco_oddenergy']}")
+        if not os.path.exists(output_dir / "test" / "recon_spec" / f"w_{attrs[label_name]}"):
+            os.makedirs(output_dir / "test" / "recon_spec" / f"w_{attrs[label_name]}")
 
         plt.plot(eval_x.cpu().squeeze(0))
         # plt.suptitle(attrs["name"])
         plt.tight_layout()
-        plt.savefig(output_dir / "test" / "recon_spec" / f"w_{attrs['dco_oddenergy']}" / f"recon_{attrs['name']}.jpeg")
+        plt.savefig(output_dir / "test" / "recon_spec" / f"w_{attrs[label_name]}" / f"recon_{attrs['name']}.jpeg")
         plt.close()
 
 
@@ -127,8 +132,10 @@ if __name__ == "__main__":
         checkpoint_path=ckpt_path,
     )
 
+    label_name = "dco_oddenergy"
+
     # モデルの評価
-    for label in [0, 0.25, 0.5, 0.75, 1.0]:
-        check_wave(model, label)
-        check_spec(model, label)
+    for label_value in [0, 0.25, 0.5, 0.75, 1.0]:
+        check_wave(model, label_name, label_value)
+        # check_spec(model, label)
 
