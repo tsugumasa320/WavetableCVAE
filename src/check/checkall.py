@@ -46,7 +46,7 @@ def check_wave(model, label_name, label_value):
         x, attrs = emi.dm.test_dataset[i]
         # plt
         plt.figure(figsize=(5, 4))
-        plt.plot(x.cpu().squeeze(0))
+        #plt.plot(x.cpu().squeeze(0))
 
         attrs[label_name] = label_value
 
@@ -132,6 +132,8 @@ if __name__ == "__main__":
         checkpoint_path=ckpt_path,
     )
 
+    # label_name = "dco_brightness"
+    # label_name = "dco_richness"
     label_name = "dco_oddenergy"
 
     # モデルの評価
