@@ -21,7 +21,7 @@ outputs/
 log/
 WavetableCVAE/
 __MACOSX
-
+*.history
 
 *.out
 nohup.out
