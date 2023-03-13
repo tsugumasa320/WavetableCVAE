@@ -290,13 +290,14 @@ class Base(nn.Module):
         brightness = self._to_tensor(attrs["dco_brightness"])
         ritchness = self._to_tensor(attrs["dco_richness"])
         oddenergy = self._to_tensor(attrs["dco_oddenergy"])
-        zcr = self._to_tensor(attrs["dco_zcr"])
+        # zcr = self._to_tensor(attrs["dco_zcr"])
 
         brightness_y = brightness.view(-1, 1, 1).expand(-1, 1, x.shape[2])
         ritchness_y = ritchness.view(-1, 1, 1).expand(-1, 1, x.shape[2])
         oddenergy_y = oddenergy.view(-1, 1, 1).expand(-1, 1, x.shape[2])
-        zcr_y = zcr.view(-1, 1, 1).expand(-1, 1, x.shape[2])
-        x = torch.cat([x, brightness_y, ritchness_y, oddenergy_y, zcr_y], dim=1)
+        # zcr_y = zcr.view(-1, 1, 1).expand(-1, 1, x.shape[2])
+        # x = torch.cat([x, brightness_y, ritchness_y, oddenergy_y, zcr_y], dim=1)
+        x = torch.cat([x, brightness_y, ritchness_y, oddenergy_y], dim=1)
 
         return x
 
@@ -311,16 +312,17 @@ class Base(nn.Module):
         brightness = self._to_tensor(attrs["dco_brightness"])
         ritchness = self._to_tensor(attrs["dco_richness"])
         oddenergy = self._to_tensor(attrs["dco_oddenergy"])
-        zcr = self._to_tensor(attrs["dco_zcr"])
+        # zcr = self._to_tensor(attrs["dco_zcr"])
 
         # (batch_size, L)
         brightness = brightness.view(-1, 1).expand(x.shape[0], 1)
         ritchness = ritchness.view(-1, 1).expand(x.shape[0], 1)
         oddenergy = oddenergy.view(-1, 1).expand(x.shape[0], 1)
-        zcr = zcr.view(-1, 1).expand(x.shape[0], 1)
+        # zcr = zcr.view(-1, 1).expand(x.shape[0], 1)
 
         # (batch_size, 1, L)
-        x = torch.cat([x, brightness, ritchness, oddenergy, zcr], dim=1)
+        # x = torch.cat([x, brightness, ritchness, oddenergy, zcr], dim=1)
+        x = torch.cat([x, brightness, ritchness, oddenergy], dim=1)
 
         return x
 
@@ -328,7 +330,7 @@ class Encoder(Base):
     def __init__(
         self,
         cond_layer: list,
-        cond_num: int = 4,
+        cond_num: int = 3,
         channels:list = [64, 128, 256, 512],
         kernel_size: list = [9, 9, 9, 9],
         stride: list = [1, 1, 2, 2],
@@ -368,8 +370,8 @@ class Encoder(Base):
                 nn.Linear(in_features=lin_layer_dim[0], out_features=lin_layer_dim[1]),
                 nn.LeakyReLU()
             )
-            self.enc_mean = nn.Linear(lin_layer_dim[1]+4, lin_layer_dim[2])
-            self.enc_scale = nn.Linear(lin_layer_dim[1]+4, lin_layer_dim[2])
+            self.enc_mean = nn.Linear(lin_layer_dim[1]+3, lin_layer_dim[2])
+            self.enc_scale = nn.Linear(lin_layer_dim[1]+3, lin_layer_dim[2])
     """
     def lin_layer(self, x):
 
@@ -417,7 +419,7 @@ class Decoder(Base):
 
         self.channels = channels
         self.dec_lin = nn.Sequential(
-            nn.Linear(in_features=lin_layer_dim[0] + 4, out_features=lin_layer_dim[1]),
+            nn.Linear(in_features=lin_layer_dim[0] + 3, out_features=lin_layer_dim[1]),
             nn.LeakyReLU(),
             nn.Linear(in_features=lin_layer_dim[1], out_features=lin_layer_dim[2]),
             nn.LeakyReLU(),

@@ -13,6 +13,7 @@ import wandb
 from hydra import compose, initialize
 from omegaconf import DictConfig
 from pytorch_lightning import Trainer
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import WandbLogger
 
 root = pyrootutils.setup_root(
@@ -27,8 +28,8 @@ pllog_dir = root / "lightning_logs"
 
 from check.check_Imgaudio import EvalModelInit, Visualize
 from dataio.akwd_datamodule import AWKDDataModule
-from models.components.callback import MyPrintingCallback
 from models.arvae import LitCVAE
+from models.components.callback import MyPrintingCallback
 from tools.find_latest import find_latest_checkpoints, find_latest_versions
 from utils import model_save, torch_fix_seed
 
@@ -68,11 +69,11 @@ class TrainerWT(pl.LightningModule):
 
         self.trainer: Trainer = hydra.utils.instantiate(
             cfg.trainer,
-            callbacks=callbacks,
+            callbacks=[callbacks,EarlyStopping(monitor="val_loss", mode="min")],
             accelerator=accelerator,
             devices=devices,
             logger=logger,
-            )
+        )
 
     def train(self, resume):
 

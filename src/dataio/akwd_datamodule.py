@@ -22,17 +22,19 @@ class AWKDDataModule(pl.LightningDataModule):
         dataset = akwd_dataset.AKWDDataset(root=data_dir)
 
         # ここは外部から与えられる様にするか要検討
-        NUM_TRAIN = 3158  # trainの数
-        NUM_VAL = 1000  # valの数
+        NUM_TRAIN = 3328  # trainの数
+        NUM_VAL = 415  # valの数
+        NUM_TEST = 415  # testの数
 
         (
             self.train_dataset,
             self.val_dataset,
+            self.test_dataset,
         ) = torch.utils.data.random_split(  # trainとvalを分ける
-            dataset, [NUM_TRAIN, NUM_VAL]
+            dataset, [NUM_TRAIN, NUM_VAL, NUM_TEST]
         )
 
-        self.test_dataset = akwd_dataset.AKWDDataset(root=data_dir)
+        # self.test_dataset = akwd_dataset.AKWDDataset(root=data_dir)
         self.batch_size = batch_size
         self.data_dir = data_dir
 

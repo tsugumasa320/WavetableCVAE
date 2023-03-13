@@ -1,0 +1,25 @@
+method: bayes
+metric:
+  goal: minimize
+  name: val_loss_step
+parameters:
+  datamodule.batch_size:
+    distribution: int_uniform
+    max: 512
+    min: 1
+  model.duplicate_num:
+    distribution: int_uniform
+    max: 30
+    min: 3
+  model.lr:
+    distribution: uniform
+    max: 2e-05
+    min: 5e-06
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args_no_hyphens}
+
+program: src/train.py
