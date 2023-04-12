@@ -69,7 +69,7 @@ class TrainerWT(pl.LightningModule):
 
         self.trainer: Trainer = hydra.utils.instantiate(
             cfg.trainer,
-            callbacks=[callbacks,EarlyStopping(monitor="val_loss", mode="min")],
+            callbacks=[callbacks],#EarlyStopping(monitor="val_loss", mode="min")],
             accelerator=accelerator,
             devices=devices,
             logger=logger,

@@ -10,7 +10,7 @@ root = pyrootutils.setup_root(
 )
 data_dir = root / "data/AKWF_44k1_600s"
 output_dir = root / "output"
-
+ckpt_dir = root / "ckpt"
 
 import datetime
 import os
@@ -31,6 +31,7 @@ from src.dataio import akwd_dataset  # ,DataLoader  # 追加
 from src.dataio import akwd_datamodule
 from src.models.components.visualize import Visualize, FeatureExatractorInit
 from tqdm import tqdm
+from src.utils import model_save
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -81,6 +82,9 @@ class MyPrintingCallback(pl.callbacks.Callback):
                 bias=1,
                 save_name=None,
             )
+
+            # model_save
+            model_save(model, trainer, ckpt_dir, model.current_epoch)
 
     def on_train_start(self, trainer: pl.Trainer, model: pl.LightningModule) -> None:
         print("Training is starting")
