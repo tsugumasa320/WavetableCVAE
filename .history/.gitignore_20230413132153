@@ -16,7 +16,7 @@ lightning_logs/
 *.app
 build/
 AKWF_44k1_600s/
-AKWF_44k1_600_sigmus/
+/home/ubuntu/My-reserch-project/data/AKWF_44k1_600_sigmus/
 AKWF_16k_80s/
 outputs/
 log/
