@@ -12,25 +12,10 @@ data_dir = root / "data/AKWF_44k1_600s"
 output_dir = root / "output"
 ckpt_dir = root / "ckpt"
 
-import datetime
-import os
-import statistics
-import time
-from pathlib import Path
-
-import essentia.standard as ess
-import matplotlib.pyplot as plt
-import numpy as np
 import pytorch_lightning as pl
-import Signal_Analysis.features.signal as signal
 import torch
-import torchaudio
-import wandb
-from scipy import stats
-from src.dataio import akwd_dataset  # ,DataLoader  # 追加
-from src.dataio import akwd_datamodule
+
 from src.models.components.visualize import Visualize, FeatureExatractorInit
-from tqdm import tqdm
 from src.utils import model_save
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

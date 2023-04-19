@@ -11,14 +11,6 @@ class Loudness(nn.Module):
         self.block_size = block_size
         self.n_fft = n_fft
 
-        """
-        f = np.linspace(0, sr / 2, n_fft // 2 + 1) + 1e-7
-        # z_weight = librosa.frequency_weighting(f,"Z").reshape(-1, 1)
-        a_weight = librosa.A_weighting(f).reshape(-1, 1)
-        self.register_buffer("a_weight", torch.from_numpy(a_weight).float())
-        self.register_buffer("window", torch.hann_window(self.n_fft))
-        """
-
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = torch.stft(
             x.squeeze(1),
@@ -29,7 +21,7 @@ class Loudness(nn.Module):
             window=None, # self.window,
             return_complex=True,
         ).abs()
-        x = torch.log(x + 1e-7) # + self.a_weight
+        x = torch.log(x + 1e-7)
         return torch.mean(x, 1, keepdim=True)
 
 
@@ -121,10 +113,6 @@ class Distance(nn.Module):
 
     def _lin_distance(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         return (torch.norm(x - y, dim=(1,2)) / torch.norm(x, dim=(1,2))).mean()
-    """
-    def _lin_distance(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        return torch.norm(x - y) / torch.norm(x)
-    """
 
     def _log_distance(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         return abs(torch.log(x + 1e-7) - torch.log(y + 1e-7)).mean()
@@ -132,18 +120,7 @@ class Distance(nn.Module):
     def _multiscale_stft(
         self, signal: torch.Tensor, scales: list, overlap: float
     ) -> torch.Tensor:
-        """
-        Compute a stft on several scales, with a constant overlap value.
-        Parameters
-        ----------
-        signal: torch.Tensor
-            input signal to process ( B X C X T )
 
-        scales: list
-            scales to use
-        overlap: float
-            overlap between windows ( 0 - 1 )
-        """
         signal = rearrange(signal, "b c t -> (b c) t")
         stfts = []
         for s in scales:
@@ -152,7 +129,7 @@ class Distance(nn.Module):
                 n_fft=s,
                 hop_length=int(s * (1 - overlap)),
                 win_length=s,
-                window=None, #torch.hann_window(s).to(signal),
+                window=None,
                 center=True,
                 normalized=True,
                 return_complex=True,

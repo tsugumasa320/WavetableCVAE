@@ -1,6 +1,3 @@
-import datetime
-import logging
-import os
 import subprocess
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -10,11 +7,8 @@ import pyrootutils
 import pytorch_lightning as pl
 import torch
 import wandb
-from hydra import compose, initialize
 from omegaconf import DictConfig
 from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
-from pytorch_lightning.loggers import WandbLogger
 
 root = pyrootutils.setup_root(
     search_from=__file__,
@@ -26,18 +20,11 @@ data_dir = root / "data/AKWF_44k1_600s"
 ckpt_dir = root / "lightning_logs/*/checkpoints"
 pllog_dir = root / "lightning_logs"
 
-from check.check_Imgaudio import EvalModelInit, Visualize
-from dataio.akwd_datamodule import AWKDDataModule
-from models.arvae import LitCVAE
-from models.components.callback import MyPrintingCallback
-from tools.find_latest import find_latest_checkpoints, find_latest_versions
 from utils import model_save, torch_fix_seed
 
-# from confirm.check_audiofeature import FeatureExatractorInit
-# from confirm.check_Imgaudio import *
 
 class TrainerWT(pl.LightningModule):
-    def __init__(self,cfg: DictConfig):
+    def __init__(self, cfg: DictConfig):
         super().__init__()
         self.cfg = cfg
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -45,8 +32,8 @@ class TrainerWT(pl.LightningModule):
 
         self.dm: pl.LightningDataModule = hydra.utils.instantiate(
             cfg.datamodule,
-            data_dir= root / "data/AKWF_44k1_600s",
-            )
+            data_dir=root / "data/AKWF_44k1_600s",
+        )
 
         print("Model init...")
         self.model: pl.LightningModule = hydra.utils.instantiate(cfg.model)
@@ -69,7 +56,7 @@ class TrainerWT(pl.LightningModule):
 
         self.trainer: Trainer = hydra.utils.instantiate(
             cfg.trainer,
-            callbacks=[callbacks],#EarlyStopping(monitor="val_loss", mode="min")],
+            callbacks=[callbacks],  # EarlyStopping(monitor="val_loss", mode="min")],
             accelerator=accelerator,
             devices=devices,
             logger=logger,
@@ -111,7 +98,7 @@ def main(cfg: DictConfig) -> None:
 
     if cfg.debug_mode is True:
         print("debug mode")
-        subprocess.run('wandb off', shell=True)
+        subprocess.run("wandb off", shell=True)
         cfg.trainer.max_epochs = 2
         print(f"max_epochs: {cfg.trainer.max_epochs}")
         cfg.logger.log_model = False
@@ -120,7 +107,7 @@ def main(cfg: DictConfig) -> None:
         cfg.callbacks.print_every_n_steps = 1
     else:
         print("production mode")
-        subprocess.run('wandb on', shell=True)
+        subprocess.run("wandb on", shell=True)
 
     # logger.info(f"Config: {cfg.pretty()}")
     trainerWT = TrainerWT(cfg)

@@ -5,6 +5,8 @@ model_weights/
 pip-wheel-metadata/
 lightning_logs/
 .vscode/
+output/
+.history/
 
 # Tsugumasa
 .zip
@@ -22,7 +24,6 @@ outputs/
 log/
 WavetableCVAE/
 __MACOSX
-
 
 *.out
 nohup.out
