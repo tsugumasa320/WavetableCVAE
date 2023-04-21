@@ -79,7 +79,6 @@ class EvalModelInit:
         return wavetable
 
     def _scw_combain_spec(self, scw, duplicate_num=6):
-
         scw = scw.reshape(600)  # [1,1,600] -> [600] #あとで直す
         # print("_scw2spectrum3",x.shape)
 
@@ -98,23 +97,22 @@ class EvalModelInit:
     def _specToDB(self, waveform: torch.Tensor):
         sample_points = len(waveform)
         spec = torchaudio.transforms.Spectrogram(
-            # sample_rate = sample_rate,
             n_fft=sample_points,  # 時間幅
             hop_length=sample_points,  # 移動幅
             win_length=sample_points,  # 窓幅
             center=False,
             pad=0,  # no_padding
-            window_fn=torch.hann_window,
+            window_fn=torch.ones,
             normalized=True,
             onesided=True,
-            power=2.0,
+            power=1.0,
         )
 
-        ToDB = torchaudio.transforms.AmplitudeToDB(stype="power", top_db=80)
+        ToDB = torchaudio.transforms.AmplitudeToDB(stype="power", top_db=None)
 
         combain_x = waveform.reshape(1, -1)  # [3600] -> [1,3600]
-        spec_x = spec(combain_x)  # [1,3600] -> [901,1???]
-        spec_x = ToDB(spec_x)
+        combain_x_todb = ToDB(combain_x)
+        spec_x = spec(combain_x_todb)  # [1,3600] -> [901,1???]
 
         return spec_x
 
@@ -143,7 +141,6 @@ class Visualize(EvalModelInit):
         show: bool = False,
         save_path: Path or str = None,
     ):
-
         # 訓練データの波形を見る
         fig, axs = plt.subplots(
             nrows=nrows,
@@ -190,7 +187,6 @@ class Visualize(EvalModelInit):
         show: bool = False,
         save_path: Path or str = None,
     ):
-
         # 訓練データの波形を見る
         fig, axs = plt.subplots(
             nrows=nrows,
@@ -228,7 +224,6 @@ class FeatureExatractorInit(EvalModelInit):
         super().__init__(model)
 
     def dco_extractFeatures(self, single_cycle: torch.Tensor, tile_num=15):
-
         single_cycle = single_cycle.squeeze(0).cpu().numpy()
         waveform_length = len(single_cycle)  # 320
         N = waveform_length * tile_num
@@ -294,13 +289,11 @@ class FeatureExatractorInit(EvalModelInit):
         bias: int = 1,
         save_name: str = "test",
     ):
-
         fig, axes = plt.subplots(dm_num, len(attrs_label) + 2, figsize=(30, 3 * dm_num), tight_layout=True)
         x = np.array(range(resolution_num + 1)) / resolution_num
 
         for j in tqdm(range(dm_num)):
             for i in range(len(attrs_label) + 2):
-
                 if i == 0:
                     # wavetable, attrs = self.dm.train_dataset[j]
                     wavetable, attrs = self.dm.test_dataset[j]
@@ -358,7 +351,6 @@ def min_max(data, min, max):
 
 
 def scw_combain(x, duplicate_num=6):
-
     """波形を6つくっつけてSTFTする関数
 
     Args:

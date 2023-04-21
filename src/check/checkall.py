@@ -43,38 +43,53 @@ def get_dataset(emi, dataset_mode):
         return emi.dm.predict_dataset
 
 
-def check_all(emi, mode, label_settings):
+def check_all(emi, mode, label_settings, show_orig, flip_on=False):
     label_names = list(label_settings.keys())
 
     # モデルの評価
     for label_values in tqdm(list(itertools.product(*label_settings.values()))):
-        check_wave(emi, mode, label_names, label_values)
-        # check_spec(model, label)
+        print(label_values)
+        check(emi, mode, label_names, label_values, show_orig, flip_on=flip_on)
 
 
-def check_wave(emi, mode, label_names, label_values):
+def check(emi, mode, label_names, label_values, show_orig, flip_on=False):
     dataset = get_dataset(emi, mode)
 
     for i in range(len(dataset)):
-        # if i >= 10:
-        #    break
-        print
         x, attrs = dataset[i]
-        # label
+
         for i in range(len(label_names)):
-            attrs[label_names[i]] = label_values[i]
+            if label_values[i] is None:
+                continue
+            else:
+                attrs[label_names[i]] = label_values[i]
+
         eval_x = emi._eval_waveform(x, attrs)
+        spec_x = emi._scw_combain_spec(x, 6)
+        eval_spec_x = emi._scw_combain_spec(eval_x, 6)
+
         # tensorを反対から
-        eval_x = eval_x.flip(1).cpu()
+        if flip_on:
+            eval_x = eval_x.flip(1).cpu()
 
         # plt
         plt.figure(figsize=(5, 4))
-        # plt.plot(x.cpu().squeeze(0))
+        if show_orig:
+            plt.plot(x.cpu().squeeze(0))
         plt.plot(eval_x.squeeze(0))
 
         # plt_settings
         plt.tight_layout()
-        plt.tick_params(labelbottom=False, labelleft=False, labelright=False, labeltop=False, bottom=False, left=False, right=False, top=False)
+        plt.tick_params(
+            labelbottom=False,
+            labelleft=False,
+            labelright=False,
+            labeltop=False,
+            bottom=False,
+            left=False,
+            right=False,
+            top=False,
+        )
 
         # save image
         if not os.path.exists(output_dir / "predict" / attrs["name"] / "oscillo"):
@@ -84,6 +99,22 @@ def check_wave(emi, mode, label_names, label_values):
             / "predict"
             / attrs["name"]
             / "oscillo"
+            / f"{attrs['name']}_b_{attrs[label_names[0]]}_w_{attrs[label_names[1]]}_r_{attrs[label_names[2]]}.png"
+        )
+        plt.close()
+
+        # save spec image
+        if not os.path.exists(output_dir / "predict" / attrs["name"] / "spec"):
+            os.makedirs(output_dir / "predict" / attrs["name"] / "spec")
+        plt.figure(figsize=(5, 4))
+        # 半透明にplt
+        plt.plot(eval_spec_x.cpu().squeeze(0), alpha=0.5, color="red")
+        plt.plot(spec_x.cpu().squeeze(0), alpha=0.5, color="blue")
+        plt.savefig(
+            output_dir
+            / "predict"
+            / attrs["name"]
+            / "spec"
             / f"{attrs['name']}_b_{attrs[label_names[0]]}_w_{attrs[label_names[1]]}_r_{attrs[label_names[2]]}.png"
         )
         plt.close()
@@ -102,43 +133,9 @@ def check_wave(emi, mode, label_names, label_values):
         )
 
 
-def check_spec(model, emi, label_name, label_value):
-    for i, data in enumerate(tqdm(emi.dm.predict_dataset)):
-        # if i >= 10:
-        #    break
-        x, attrs = emi.dm.predict_dataset[i]
-        # plt
-        plt.figure(figsize=(5, 4))
-
-        attrs[label_name] = label_value
-        eval_x = emi.model_eval(x.unsqueeze(0), attrs)
-        eval_x = eval_x.squeeze(0).to(device)
-
-        x = emi._scw_combain_spec(x, 6)
-        eval_x = emi._scw_combain_spec(eval_x, 6)
-
-        """
-        plt.plot(x.cpu().squeeze(0))
-        # plt.suptitle(attrs["name"])
-        plt.tight_layout()
-        plt.savefig(output_dir / "predict" / "org_spec" / f"{attrs['name']}.jpeg")
-        plt.close()
-        """
-
-        # dir 作成
-        if not os.path.exists(output_dir / "predict" / "recon_spec" / f"w_{attrs[label_name]}"):
-            os.makedirs(output_dir / "predict" / "recon_spec" / f"w_{attrs[label_name]}")
-
-        plt.plot(eval_x.cpu().squeeze(0))
-        # plt.suptitle(attrs["name"])
-        plt.tight_layout()
-        plt.savefig(output_dir / "predict" / "recon_spec" / f"w_{attrs[label_name]}" / f"recon_{attrs['name']}.jpeg")
-        plt.close()
-
-
 if __name__ == "__main__":
     ckpt_path = (
-        "/Users/tsugumasayutani/Documents/GitHub/My-reserch-project/ckpt/2023-03-31-23:12:07.844170-LitCVAE-99000.ckpt"
+        "/Users/tsugumasayutani/Documents/GitHub/My-reserch-project/ckpt/2023-04-20-23:53:57.186138-LitCVAE-10000.ckpt"
     )
 
     # モデルの読み込み
@@ -148,9 +145,21 @@ if __name__ == "__main__":
 
     emi = EvalModelInit(model)
     mode = "predict"
-    label_settings = {
-        "dco_brightness": [0, 0.25, 0.5, 0.75, 1.0],
-        "dco_oddenergy": [0, 0.25, 0.5, 0.75, 1.0],
-        "dco_richness": [0, 0.25, 0.5, 0.75, 1.0],
-    }
-    check_all(emi, mode, label_settings)
+    flip_on = False
+    show_orig = True
+    org_flg = True
+
+    if org_flg:
+        label_settings = {
+            "dco_brightness": [None],
+            "dco_oddenergy": [None],
+            "dco_richness": [None],
+        }
+    else:
+        label_settings = {
+            "dco_brightness": [0, 0.25, 0.5, 0.75, 1.0],
+            "dco_oddenergy": [0, 0.25, 0.5, 0.75, 1.0],
+            "dco_richness": [0, 0.25, 0.5, 0.75, 1.0],
+        }
+
+    check_all(emi, mode, label_settings, show_orig, flip_on=flip_on)

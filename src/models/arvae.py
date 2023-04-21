@@ -209,71 +209,6 @@ class Base(nn.Module):
         return torch.tensor(x, device=device, dtype=torch.float32)
 
     def _conv_conditioning(self, x: torch.Tensor, attrs: dict) -> torch.Tensor:
-        """
-        Centroid = torch.tensor(attrs["SpectralCentroid"])
-        Spread = torch.tensor(attrs["SpectralSpread"])
-        Kurtosis = torch.tensor(attrs["SpectralKurtosis"])
-        ZeroX = torch.tensor(attrs["ZeroCrossingRate"])
-        Complex = torch.tensor(attrs["SpectralComplexity"])
-        OddEven = torch.tensor(attrs["OddToEvenHarmonicEnergyRatio"])
-        Dissonance = torch.tensor(attrs["Dissonance"])
-        PitchSalience = torch.tensor(attrs["PitchSalience"])
-        Hnr = torch.tensor(attrs["HNR"])
-
-        y = torch.ones([x.shape[0], 1, x.shape[2]]).permute(
-            2, 1, 0
-        )  # [600,1,32] or [140,256,32]
-        # bright_y = y.to(device) * bright.to(device) # [D,C,B]*[B]
-        # rough_y = y.to(device) * rough.to(device)
-        # depth_y = y.to(device) * depth.to(device)
-
-        Centroid_y = y.to(device) * Centroid.to(device)
-        Spread_y = y.to(device) * Spread.to(device)
-        Kurtosis_y = y.to(device) * Kurtosis.to(device)
-        ZeroX_y = y.to(device) * ZeroX.to(device)
-        Complex_y = y.to(device) * Complex.to(device)
-        OddEven_y = y.to(device) * OddEven.to(device)
-        Dissonance_y = y.to(device) * Dissonance.to(device)
-        PitchSalience_y = y.to(device) * PitchSalience.to(device)
-        Hnr_y = y.to(device) * Hnr.to(device)
-
-        x = x.to(device)
-        # x = torch.cat([x, bright_y.permute(2,1,0)], dim=1).to(torch.float32)
-        # x = torch.cat([x, rough_y.permute(2,1,0)], dim=1).to(torch.float32)
-        # x = torch.cat([x, depth_y.permute(2,1,0)], dim=1).to(torch.float32)
-        x = torch.cat([x, Centroid_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-        x = torch.cat([x, Spread_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-        x = torch.cat([x, Kurtosis_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-        x = torch.cat([x, ZeroX_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-        x = torch.cat([x, Complex_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-        x = torch.cat([x, OddEven_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-        x = torch.cat([x, Dissonance_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-        x = torch.cat([x, PitchSalience_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-        x = torch.cat([x, Hnr_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-
-        # del入れる?
-
-
-        brightness = torch.tensor(attrs["dco_brightness"])
-        ritchness = torch.tensor(attrs["dco_richness"])
-        oddenergy = torch.tensor(attrs["dco_oddenergy"])
-        zcr = torch.tensor(attrs["dco_zcr"])
-
-        y = torch.ones([x.shape[0], 1, x.shape[2]]).permute(
-            2, 1, 0
-        )  # [600,1,32] or [140,256,32]
-
-        brightness_y = y.to(device) * brightness.to(device)
-        ritchness_y = y.to(device) * ritchness.to(device)
-        oddenergy_y = y.to(device) * oddenergy.to(device)
-        zcr_y = y.to(device) * zcr.to(device)
-
-        x = torch.cat([x, brightness_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-        x = torch.cat([x, ritchness_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-        x = torch.cat([x, oddenergy_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-        x = torch.cat([x, zcr_y.permute(2, 1, 0)], dim=1).to(torch.float32)
-        """
-
         brightness = self._to_tensor(attrs["dco_brightness"])
         ritchness = self._to_tensor(attrs["dco_richness"])
         oddenergy = self._to_tensor(attrs["dco_oddenergy"])
@@ -364,21 +299,8 @@ class Encoder(Base):
                 nn.Linear(in_features=lin_layer_dim[1], out_features=lin_layer_dim[2]),
                 nn.LeakyReLU(),
             )
-            self.enc_mean = nn.Linear(lin_layer_dim[1] + 3, lin_layer_dim[2])
-            self.enc_scale = nn.Linear(lin_layer_dim[1] + 3, lin_layer_dim[2])
-
-    """
-    def lin_layer(self, x):
-
-        x = x.view(x.shape[0], -1)
-        lin = nn.Sequential(
-            nn.Linear(in_features=x.shape[1], out_features=), # 未設定
-            nn.LeakyReLU()
-        ).to(device)
-
-        x = lin(x)
-        return x
-    """
+            self.enc_mean = nn.Linear(lin_layer_dim[2] + 3, lin_layer_dim[3])
+            self.enc_scale = nn.Linear(lin_layer_dim[2] + 3, lin_layer_dim[3])
 
     def forward(self, x, attrs):
         for i, layer in enumerate(self.conv_layers):
@@ -413,7 +335,7 @@ class Decoder(Base):
 
         self.channels = channels
         self.dec_lin = nn.Sequential(
-            nn.Linear(in_features=lin_layer_dim[0] + 4, out_features=lin_layer_dim[1]),
+            nn.Linear(in_features=lin_layer_dim[0] + 3, out_features=lin_layer_dim[1]),
             nn.LeakyReLU(),
             nn.Linear(in_features=lin_layer_dim[1], out_features=lin_layer_dim[2]),
             nn.LeakyReLU(),
