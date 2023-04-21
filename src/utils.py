@@ -33,4 +33,3 @@ def get_current_time_filename(model, comment: str) -> str:
     model_name = model.__class__.__name__
     name = f"{d_today}-{t_now}-{model_name}-{comment}"
     return name
-

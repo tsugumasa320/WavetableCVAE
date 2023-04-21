@@ -21,8 +21,9 @@ from src.utils import model_save
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class MyPrintingCallback(pl.callbacks.Callback):
-    def __init__(self, print_every_n_steps: int = 1000):
+    def __init__(self, print_every_n_steps: int = 1000, save_every_n_steps: int = 10000):
         self.print_every_n_steps = print_every_n_steps
+        self.save_every_n_steps = save_every_n_steps
         super().__init__()
 
     def on_validation_epoch_end(self, trainer, model):
@@ -40,18 +41,6 @@ class MyPrintingCallback(pl.callbacks.Callback):
             print("FeatureExatractor")
             featureExatractorInit = FeatureExatractorInit(model)
 
-            """
-            attrs_label = [
-                "SpectralCentroid",
-                "SpectralSpread",
-                "SpectralKurtosis",
-                "ZeroCrossingRate",
-                "OddToEvenHarmonicEnergyRatio",
-                "PitchSalience",
-                "HNR",
-            ]
-            """
-
             attrs_label = [
                 "dco_brightness",
                 "dco_richness",
@@ -68,6 +57,8 @@ class MyPrintingCallback(pl.callbacks.Callback):
                 save_name=None,
             )
 
+        if model.current_epoch % self.save_every_n_steps == 0 \
+            and model.current_epoch / self.save_every_n_steps > 0:
             # model_save
             model_save(model, trainer, ckpt_dir, model.current_epoch)
 

@@ -302,6 +302,19 @@ class Encoder(Base):
             self.enc_mean = nn.Linear(lin_layer_dim[2] + 3, lin_layer_dim[3])
             self.enc_scale = nn.Linear(lin_layer_dim[2] + 3, lin_layer_dim[3])
 
+    """
+    def lin_layer(self, x):
+
+        x = x.view(x.shape[0], -1)
+        lin = nn.Sequential(
+            nn.Linear(in_features=x.shape[1], out_features=), # 未設定
+            nn.LeakyReLU()
+        ).to(device)
+
+        x = lin(x)
+        return x
+    """
+
     def forward(self, x, attrs):
         for i, layer in enumerate(self.conv_layers):
             if self.cond_layer[i]:
