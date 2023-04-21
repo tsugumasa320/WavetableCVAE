@@ -364,8 +364,8 @@ class Encoder(Base):
                 nn.Linear(in_features=lin_layer_dim[1], out_features=lin_layer_dim[2]),
                 nn.LeakyReLU(),
             )
-            self.enc_mean = nn.Linear(lin_layer_dim[1] + 3, lin_layer_dim[2])
-            self.enc_scale = nn.Linear(lin_layer_dim[1] + 3, lin_layer_dim[2])
+            self.enc_mean = nn.Linear(lin_layer_dim[2] + 3, lin_layer_dim[3])
+            self.enc_scale = nn.Linear(lin_layer_dim[2] + 3, lin_layer_dim[3])
 
     """
     def lin_layer(self, x):
@@ -413,7 +413,7 @@ class Decoder(Base):
 
         self.channels = channels
         self.dec_lin = nn.Sequential(
-            nn.Linear(in_features=lin_layer_dim[0] + 4, out_features=lin_layer_dim[1]),
+            nn.Linear(in_features=lin_layer_dim[0] + 3, out_features=lin_layer_dim[1]),
             nn.LeakyReLU(),
             nn.Linear(in_features=lin_layer_dim[1], out_features=lin_layer_dim[2]),
             nn.LeakyReLU(),

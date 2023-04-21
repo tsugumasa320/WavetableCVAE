@@ -273,6 +273,64 @@ class FeatureExatractorInit(EvalModelInit):
 
         return brightness, richness, fullness, noiseness
 
+    def CondOrLatentOperate(
+        self,
+        wavetable,
+        attrs,
+        label_name: str,
+        normalize_method: str,
+        dm_num: int = 0,
+        resolution_num: int = 10,
+        bias: int = 1,
+        mode: str = "cond",
+    ):
+
+        cond_label = []
+        est_label = []
+
+        latent_op = {
+            "randomize": None,
+            "SpectralCentroid": None,
+            "SpectralSpread": None,
+            "SpectralKurtosis": None,
+            "ZeroCrossingRate": None,
+            "OddToEvenHarmonicEnergyRatio": None,
+            "PitchSalience": None,
+            "HNR": None,
+        }
+
+        # ラベルを段階的に設定
+        for i in range(resolution_num + 1):
+
+            if mode == "cond":
+                # print("cond")
+                attrs[label_name] = (1 / resolution_num) * i  # 0~1の範囲でラベルを設定
+                cond_label.append(attrs[label_name])
+                attrs[label_name] = attrs[label_name] * bias
+            elif mode == "latent":
+                # print("latent")
+                # print(label_name)
+                latent_op["label_name"] = (1 / resolution_num) * i
+                # print(latent_op["label_name"] )
+                cond_label.append(latent_op["label_name"])
+                latent_op["label_name"] = latent_op["label_name"] * bias
+            else:
+                raise ValueError("mode must be cond or latent")
+
+            x = self.model_eval(
+                wav=wavetable.unsqueeze(0), attrs=attrs, latent_op=latent_op
+            )
+            # 波形を6つ繋げる
+            # print(x)
+            six_cycle_wavetable = scw_combain(x.squeeze(0), duplicate_num=15)
+            est_label.append(
+                self.est_label_eval(
+                    six_cycle_wavetable, attrs, label_name=label_name, dbFlg=False
+                )
+            )
+
+        return cond_label, est_label
+
     def ConditionLabelEvalPlt(self, label1, label2, label_name: str):
         # 折れ線グラフ表示
         p1 = plt.plot(label1, linewidth=2)
@@ -284,6 +342,25 @@ class FeatureExatractorInit(EvalModelInit):
         plt.grid(True)
 
         plt.legend((p1[0], p2[0]), ("traget label", "estimate label"), loc=2)
+
+    def est_label_eval(
+        self, wavetable: torch.Tensor, attrs: dict, label_name: str, dbFlg: bool = False
+    ):
+
+        bright, ritch, odd, zcr = self.dco_extractFeatures(wavetable, 15)
+
+        if label_name == "dco_brightness":
+            est_data = bright
+        elif label_name == "dco_richness":
+            est_data = ritch
+        elif label_name == "dco_oddenergy":
+            est_data = odd
+        elif label_name == "dco_zcr":
+            est_data = zcr
+        else:
+            raise Exception("Error!")
+
+        return est_data
 
     def __call__(
         self,
@@ -316,6 +393,8 @@ class FeatureExatractorInit(EvalModelInit):
 
                 else:
                     target, estimate = self.CondOrLatentOperate(
+                        wavetable,
+                        attrs,
                         attrs_label[i - 2],
                         normalize_method=None,
                         dm_num=j,
