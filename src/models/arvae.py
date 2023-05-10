@@ -46,6 +46,7 @@ class LitCVAE(pl.LightningModule):
         wave_loss_coef: float = None,
         enc_lin_layer_dim: list = None,
         dec_lin_layer_dim: list = None,
+        cycle_num: int = 1,
     ):  # Define computations here
         super().__init__()
         assert sample_points == 600
@@ -59,6 +60,7 @@ class LitCVAE(pl.LightningModule):
         self.warmup = warmup
         self.min_kl = min_kl
         self.max_kl = max_kl
+        self.cycle_size = self.warmup//cycle_num
 
         self.wave_loss_coef = wave_loss_coef
 
@@ -133,7 +135,7 @@ class LitCVAE(pl.LightningModule):
         x, _ = attrs
         return self(x)
 
-    def get_beta_kl(self, epoch, warmup, min_beta, max_beta):
+    def get_beta_kl_monotonic(self, epoch, warmup, min_beta, max_beta):
         if epoch > warmup:
             return max_beta
         t = epoch / warmup
@@ -141,6 +143,24 @@ class LitCVAE(pl.LightningModule):
         max_beta_log = np.log(max_beta)
         beta_log = t * (max_beta_log - min_beta_log) + min_beta_log
         return np.exp(beta_log)
+
+    # https://github.com/acids-ircam/RAVE/blob/ff10b4f9843d530f60b6f108a9f0ff874a1a20b6/rave/core.py#L100
+    def get_beta_kl(self, step, warmup, min_beta, max_beta):
+        if step > warmup: return max_beta
+        t = step / warmup
+        min_beta_log = np.log(min_beta)
+        max_beta_log = np.log(max_beta)
+        beta_log = t * (max_beta_log - min_beta_log) + min_beta_log
+        return np.exp(beta_log)
+
+
+    def get_beta_kl_cyclic(self, step, cycle_size, min_beta, max_beta):
+        return self.get_beta_kl(step % cycle_size, cycle_size // 2, min_beta, max_beta)
+
+
+    def get_beta_kl_cyclic_annealed(self, step, cycle_size, warmup, min_beta, max_beta):
+        min_beta = self.get_beta_kl(step, warmup, min_beta, max_beta)
+        return self.get_beta_kl_cyclic(step, cycle_size, min_beta, max_beta)
 
     def _common_step(self, batch: tuple, batch_idx: int, stage: str) -> torch.Tensor:  # ロス関数定義.推論時は通らない
         x, attrs = self._prepare_batch(batch)
@@ -161,8 +181,9 @@ class LitCVAE(pl.LightningModule):
         distance = distance + loud_dist
 
         # KL Loss
+        """
         if self.warmup is not None:
-            beta = self.get_beta_kl(
+            beta = self.get_beta_kl_monotonic(
                 epoch=self.current_epoch,
                 warmup=self.warmup,
                 min_beta=self.min_kl,
@@ -170,6 +191,15 @@ class LitCVAE(pl.LightningModule):
             )
         else:
             beta = 0.0
+        """
+
+        beta = self.get_beta_kl_cyclic_annealed(
+            step=self.current_epoch,
+            cycle_size=self.cycle_size,
+            warmup=self.warmup,
+            min_beta=self.min_kl,
+            max_beta=self.max_kl,
+        )
         kl = self.compute_kld_loss(z_dist, prior_dist, beta=beta, c=0.0)
 
         # attr_reg_loss = reg_loss(z_tilde, rad_, len(data), gamma = 1.0, factor = 1.0)

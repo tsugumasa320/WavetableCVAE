@@ -45,11 +45,12 @@ model:
   sample_rate: 44100
   lr: 1e-4
   duplicate_num: 6
-  warmup: 10001 # beta
-  
+  warmup: 30000 # beta
+
   min_kl: 1e-4
   max_kl: 1e-1
   wave_loss_coef: null
+  cycle_num: 8
 
 datamodule:
   _target_: "src.dataio.akwd_datamodule.AWKDDataModule"
