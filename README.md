@@ -1,4 +1,4 @@
-# VAE4Wavetable
+# WavetableCVAE
 
 # DEMO
 
@@ -17,12 +17,6 @@ WIP
 │
 ├── data                   <- Project data
 │
-├── notebooks              <- not use
-│
-├── plugin                 <- not use
-│
-├── scripts                <- Shell scripts
-│
 ├── src                    <- Source code
 │   │
 │   ├── check                    <- Visualization of generated results
@@ -32,6 +26,8 @@ WIP
 │   │
 |   ├── utils.py                    <- Utility scripts
 │   └── train.py                 <- Run training
+│
+├── torchscript            <- ckpt file
 │
 ├── .gitignore                <- List of files ignored by git
 ├── requirements.txt          <- File for installing python dependencies
