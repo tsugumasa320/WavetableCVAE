@@ -80,8 +80,9 @@ conf -> config.yaml内の設定を変えることで、
 CPU,GPUの切り替えも自動的に判断する設定になっています
 
 # Author
+Tsugumasa Yutani
 
 # License
 ライセンスを明示する
 
-"hoge" is under [MIT license](https://en.wikipedia.org/wiki/MIT_License).
+"WavetableCVAE" is under [CC BY-NC 4.0 license](https://creativecommons.org/licenses/by-nc/4.0/deed.ja).
