@@ -82,3 +82,6 @@ Tsugumasa Yutani
 ライセンスを明示する
 
 "WavetableCVAE" is under [CC BY-NC 4.0 license](https://creativecommons.org/licenses/by-nc/4.0/deed.ja).
+
+# Acknowledgment
+本研究は第12期サイボウズ・ラボユースの支援を受けた．
