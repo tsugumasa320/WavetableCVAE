@@ -1,13 +1,14 @@
 # WavetableCVAE
 
-# Abstract
-
 <img width="992" alt="wavetablecvae_overview" src="https://github.com/tsugumasa320/WavetableCVAE/assets/35299183/a87a506b-8579-47fb-9f3c-329c64ee104c">
 
-- CVAEを用いて，ウェーブテーブル合成におけるオシレータ波形（ウェーブテーブル)を条件付け生成
-- bright, warm, richの3種類の意味的ラベルを用いて，望んだ音色を持つウェーブテーブルを得る
-- 生成されたウェーブテーブルは，オシレータとして繰り返し参照され，定常音として出力される
-- 通常のウェーブテーブル合成と同様に，キーボード等によって操作し，フィルタや増幅器によって音色を変化させることも可能
+第137回MUS・第147回SLP合同研究発表会で発表の，"CVAEを用いたウェーブテーブル合成の意味的な音色制御"に関するリポジトリ
+
+## 概要
+
+- Conditional Variational Autoencoder (CVAE)を利用して,ウェーブテーブルの条件付け生成を行う．
+- 条件付けには，音響特徴に基づいて算出した明るさ(bright)，暖かさ(warm)，リッチさ(rich)という3つの意味的ラベルを使用
+- 生成されたウェーブテーブルは，オシレータとして繰り返し参照され，定常音として出力する
 
 # Requirement
 
