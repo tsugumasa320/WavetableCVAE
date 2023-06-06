@@ -1,10 +1,8 @@
 # WavetableCVAE
 
-# Abstract
-
 <img width="992" alt="wavetablecvae_overview" src="https://github.com/tsugumasa320/WavetableCVAE/assets/35299183/a87a506b-8579-47fb-9f3c-329c64ee104c">
 
- <br/>
+# Abstract
 
 - Conditional Variational Autoencoder (CVAE)を利用して,ウェーブテーブルの条件付け生成を行う．
 - 条件付けには，音響特徴に基づいて算出した明るさ(bright)，暖かさ(warm)，リッチさ(rich)という3つの意味的ラベルを使用
