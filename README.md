@@ -4,9 +4,11 @@
 
 # Abstract
 
-- Conditional Variational Autoencoder (CVAE)を利用して,ウェーブテーブルの条件付け生成を行う．
+- Conditional Variational Autoencoder (CVAE)を利用して,ウェーブテーブル[^1]の条件付け生成を行う．
 - 条件付けには，音響特徴に基づいて算出した明るさ(bright)，暖かさ(warm)，リッチさ(rich)という3つの意味的ラベルを使用
 - 生成されたウェーブテーブルは，オシレータとして繰り返し参照され，定常音として出力する
+
+[^1]: ウェーブテーブル合成に用いられる1周期分の波形.参考(https://en.wikipedia.org/wiki/Wavetable_synthesis)
 
 第137回MUS・第147回SLP合同研究発表会で，"CVAEを用いたウェーブテーブル合成の意味的な音色制御"として発表
 
