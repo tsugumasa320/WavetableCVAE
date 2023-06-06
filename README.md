@@ -7,6 +7,7 @@
 - Conditional Variational Autoencoder (CVAE)を利用して,ウェーブテーブル[^1]の条件付け生成を行う．
 - 条件付けには，音響特徴に基づいて算出した明るさ(bright)，暖かさ(warm)，リッチさ(rich)という3つの意味的ラベルを使用
 - 生成されたウェーブテーブルは，オシレータとして繰り返し参照され，定常音として出力する
+- 多くのウェーブテーブル合成と同様に，キーボード等によって操作し，フィルタや増幅器によって音色を変化させる事を想定する
 
 [^1]: ウェーブテーブル合成に用いられる1周期分の波形.参考(https://en.wikipedia.org/wiki/Wavetable_synthesis)
 
@@ -37,8 +38,6 @@
 ├── requirements.txt          <- File for installing python dependencies
 └── README.md
 ```
-
-WIP
 
 # Installation
 
@@ -72,11 +71,7 @@ conf -> config.yaml内の設定を変えることで、
 
 CPU,GPUの切り替えも自動的に判断する設定になっています
 
-# Author
-Tsugumasa Yutani
-
 # License
-ライセンスを明示する
 
 "WavetableCVAE" is under [CC BY-NC 4.0 license](https://creativecommons.org/licenses/by-nc/4.0/deed.ja).
 
