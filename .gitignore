@@ -7,6 +7,8 @@ lightning_logs/
 .vscode/
 output/
 .history/
+__pycache__/
+ckpt/
 
 # Tsugumasa
 .zip

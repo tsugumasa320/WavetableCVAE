@@ -1,12 +1,19 @@
-# VAE4Wavetable
+# WavetableCVAE
 
-# DEMO
+<img width="992" alt="wavetablecvae_overview" src="https://github.com/tsugumasa320/WavetableCVAE/assets/35299183/a87a506b-8579-47fb-9f3c-329c64ee104c">
 
-WIP
+# Abstract
 
-# Features
+1. Conditional Variational Autoencoder (CVAE)を利用して,ウェーブテーブル[^1]の条件付け生成を行う．
+2. 条件付けには，音響特徴に基づいて算出した明るさ(bright)，暖かさ(warm)，リッチさ(rich)という3つの意味的ラベルを使用
+3. 生成されたウェーブテーブルは，オシレータとして繰り返し参照され，定常音として出力する
+4. 多くのウェーブテーブル合成と同様に，キーボード等によって操作し，フィルタや増幅器によって音色を変化させる事を想定する
 
-WIP
+本リポジトリでは，2までの深層学習部分のコードを公開
+
+[^1]: ウェーブテーブル合成に用いられる1周期分の波形.参考(https://en.wikipedia.org/wiki/Wavetable_synthesis)
+
+第137回MUS・第147回SLP合同研究発表会で，"CVAEを用いたウェーブテーブル合成の意味的な音色制御"として発表
 
 # Requirement
 
@@ -16,12 +23,6 @@ WIP
 ├── conf                   <- hydra config data
 │
 ├── data                   <- Project data
-│
-├── notebooks              <- not use
-│
-├── plugin                 <- not use
-│
-├── scripts                <- Shell scripts
 │
 ├── src                    <- Source code
 │   │
@@ -33,21 +34,14 @@ WIP
 |   ├── utils.py                    <- Utility scripts
 │   └── train.py                 <- Run training
 │
+├── torchscript            <- ckpt file
+│
 ├── .gitignore                <- List of files ignored by git
 ├── requirements.txt          <- File for installing python dependencies
 └── README.md
 ```
 
-WIP
-
 # Installation
-
-
-### docker環境作成
-
-```bash
-docker run --gpus all -it  -v $(pwd)/workspace:/workspace nvidia/cuda:11.7.1-cudnn8-devel-ubuntu20.04
-```
 
 ### 仮想環境作成
 ```bash
@@ -79,9 +73,9 @@ conf -> config.yaml内の設定を変えることで、
 
 CPU,GPUの切り替えも自動的に判断する設定になっています
 
-# Author
-
 # License
-ライセンスを明示する
 
-"hoge" is under [MIT license](https://en.wikipedia.org/wiki/MIT_License).
+"WavetableCVAE" is under [CC BY-NC 4.0 license](https://creativecommons.org/licenses/by-nc/4.0/deed.ja).
+
+# Acknowledgment
+本研究は第12期サイボウズ・ラボユースの支援を受けました．
