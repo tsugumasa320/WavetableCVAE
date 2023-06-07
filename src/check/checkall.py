@@ -32,6 +32,19 @@ from tqdm import tqdm
 import itertools
 
 
+def no_ticks():
+    plt.tick_params(
+        labelbottom=False,
+        labelleft=False,
+        labelright=False,
+        labeltop=False,
+        bottom=False,
+        left=False,
+        right=False,
+        top=False,
+    )
+
+
 def get_dataset(emi, dataset_mode):
     if dataset_mode == "train":
         return emi.dm.train_dataset
@@ -41,6 +54,8 @@ def get_dataset(emi, dataset_mode):
         return emi.dm.test_dataset
     elif dataset_mode == "predict":
         return emi.dm.predict_dataset
+    elif dataset_mode == "all":
+        return emi.dm.dataset
 
 
 def check_all(emi, mode, label_settings, show_orig, flip_on=False):
@@ -48,12 +63,15 @@ def check_all(emi, mode, label_settings, show_orig, flip_on=False):
 
     # モデルの評価
     for label_values in tqdm(list(itertools.product(*label_settings.values()))):
-        print(label_values)
+        # print(label_values)
         check(emi, mode, label_names, label_values, show_orig, flip_on=flip_on)
 
 
 def check(emi, mode, label_names, label_values, show_orig, flip_on=False):
     dataset = get_dataset(emi, mode)
+
+    wav_mae = 0
+    spec_mae = 0
 
     for i in range(len(dataset)):
         x, attrs = dataset[i]
@@ -67,54 +85,88 @@ def check(emi, mode, label_names, label_values, show_orig, flip_on=False):
         eval_x = emi._eval_waveform(x, attrs)
         spec_x = emi._scw_combain_spec(x, 6)
         eval_spec_x = emi._scw_combain_spec(eval_x, 6)
+        # print(x)
+        # wav_mae
+        wav_mae += torch.mean(torch.abs((x + 1) / 2) - ((eval_x + 1) / 2)).item()
+        # Q:なぜitem()が必要なのか
+        # A:tensorの値を取り出すため
+        # spec_mae
+        spec_mae += torch.mean(torch.abs(spec_x - eval_spec_x)).item()
+
+        # plt
+        plt.figure(figsize=(5, 4))
+        plt.plot(x.cpu().squeeze(0))
+
+        # plt_settings
+        plt.tight_layout()
+        # no_ticks()
+
+        # save org image
+        if not os.path.exists(output_dir / "predict" / attrs["name"] / "org_oscillo"):
+            os.makedirs(output_dir / "predict" / attrs["name"] / "org_oscillo")
+        plt.savefig(
+            output_dir
+            / "predict"
+            / attrs["name"]
+            / "org_oscillo"
+            / f"{attrs['name']}_b_{attrs[label_names[0]]}_w_{attrs[label_names[1]]}_r_{attrs[label_names[2]]}.png"
+        )
+        plt.close()
 
         # tensorを反対から
         if flip_on:
             eval_x = eval_x.flip(1).cpu()
 
-        # plt
         plt.figure(figsize=(5, 4))
-        if show_orig:
-            plt.plot(x.cpu().squeeze(0))
-        plt.plot(eval_x.squeeze(0))
-
+        plt.plot(x.cpu().squeeze(0))
+        plt.plot(eval_x.cpu().squeeze(0), color="red")
         # plt_settings
         plt.tight_layout()
-        plt.tick_params(
-            labelbottom=False,
-            labelleft=False,
-            labelright=False,
-            labeltop=False,
-            bottom=False,
-            left=False,
-            right=False,
-            top=False,
-        )
+        # no_ticks()
 
-        # save image
-        if not os.path.exists(output_dir / "predict" / attrs["name"] / "oscillo"):
-            os.makedirs(output_dir / "predict" / attrs["name"] / "oscillo")
+        # save recon image
+        if not os.path.exists(output_dir / "predict" / attrs["name"] / "recon_oscillo"):
+            os.makedirs(output_dir / "predict" / attrs["name"] / "recon_oscillo")
         plt.savefig(
             output_dir
             / "predict"
             / attrs["name"]
-            / "oscillo"
+            / "recon_oscillo"
             / f"{attrs['name']}_b_{attrs[label_names[0]]}_w_{attrs[label_names[1]]}_r_{attrs[label_names[2]]}.png"
         )
         plt.close()
 
         # save spec image
-        if not os.path.exists(output_dir / "predict" / attrs["name"] / "spec"):
-            os.makedirs(output_dir / "predict" / attrs["name"] / "spec")
+        if not os.path.exists(output_dir / "predict" / attrs["name"] / "org_spec"):
+            os.makedirs(output_dir / "predict" / attrs["name"] / "org_spec")
+
         plt.figure(figsize=(5, 4))
-        # 半透明にplt
-        plt.plot(eval_spec_x.cpu().squeeze(0), alpha=0.5, color="red")
-        plt.plot(spec_x.cpu().squeeze(0), alpha=0.5, color="blue")
+
+        plt.plot(spec_x.cpu().squeeze(0), color="blue")
+        plt.tight_layout()
+        # no_ticks()
         plt.savefig(
             output_dir
             / "predict"
             / attrs["name"]
-            / "spec"
+            / "org_spec"
+            / f"{attrs['name']}_b_{attrs[label_names[0]]}_w_{attrs[label_names[1]]}_r_{attrs[label_names[2]]}.png"
+        )
+        plt.close()
+
+        # save spec image
+        if not os.path.exists(output_dir / "predict" / attrs["name"] / "recon_spec"):
+            os.makedirs(output_dir / "predict" / attrs["name"] / "recon_spec")
+
+        plt.figure(figsize=(5, 4))
+        plt.plot(eval_spec_x.cpu().squeeze(0), color="red")
+        plt.tight_layout()
+        # no_ticks()
+        plt.savefig(
+            output_dir
+            / "predict"
+            / attrs["name"]
+            / "recon_spec"
             / f"{attrs['name']}_b_{attrs[label_names[0]]}_w_{attrs[label_names[1]]}_r_{attrs[label_names[2]]}.png"
         )
         plt.close()
@@ -131,11 +183,13 @@ def check(emi, mode, label_names, label_values, show_orig, flip_on=False):
             eval_x,
             44100,
         )
+    print(f"wav_mae: {wav_mae / len(dataset)}")
+    print(f"spec_mae: {spec_mae / len(dataset)}")
 
 
 if __name__ == "__main__":
     ckpt_path = (
-        "/Users/tsugumasayutani/Documents/GitHub/My-reserch-project/ckpt/2023-04-20-23:53:57.186138-LitCVAE-10000.ckpt"
+        "/Users/tsugumasayutani/Documents/GitHub/My-reserch-project/ckpt/2023-04-23-18:18:10.452469-LitCVAE-30000.ckpt"
     )
 
     # モデルの読み込み
@@ -144,8 +198,8 @@ if __name__ == "__main__":
     )
 
     emi = EvalModelInit(model)
-    mode = "predict"
-    flip_on = False
+    mode = "predict"  # "all" or "predict"
+    flip_on = True
     show_orig = True
     org_flg = True
 
@@ -157,9 +211,9 @@ if __name__ == "__main__":
         }
     else:
         label_settings = {
-            "dco_brightness": [0, 0.25, 0.5, 0.75, 1.0],
-            "dco_oddenergy": [0, 0.25, 0.5, 0.75, 1.0],
-            "dco_richness": [0, 0.25, 0.5, 0.75, 1.0],
+            "dco_brightness": [0.1],
+            "dco_oddenergy": [0.0],
+            "dco_richness": [0.8],
         }
 
     check_all(emi, mode, label_settings, show_orig, flip_on=flip_on)

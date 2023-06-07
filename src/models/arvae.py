@@ -153,7 +153,7 @@ class LitCVAE(pl.LightningModule):
         output = output.repeat(1, 1, self.duplicate_num)
         assert x.shape == output.shape, f"in: {x.shape} != out: {output.shape}"
 
-        # RAVE Loss
+        # RAVE like Loss
         loud_x = self.loudness(x)
         loud_x_out = self.loudness(output)
         loud_dist = (loud_x - loud_x_out).pow(2).mean()

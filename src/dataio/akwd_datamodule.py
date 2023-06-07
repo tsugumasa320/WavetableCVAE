@@ -20,7 +20,7 @@ from typing import Optional
 class AWKDDataModule(pl.LightningDataModule):
     def __init__(self, batch_size: int, data_dir: str, predict_dir: Optional[str] = None):
         super().__init__()  # 親クラスのinit
-        dataset = akwd_dataset.AKWDDataset(root=data_dir)
+        self.dataset = akwd_dataset.AKWDDataset(root=data_dir)
         if predict_dir is not None:
             self.predict_dataset = akwd_dataset.AKWDDataset(root=predict_dir)
 
@@ -34,7 +34,7 @@ class AWKDDataModule(pl.LightningDataModule):
             self.val_dataset,
             self.test_dataset,
         ) = torch.utils.data.random_split(  # trainとvalを分ける
-            dataset, [NUM_TRAIN, NUM_VAL, NUM_TEST]
+            self.dataset, [NUM_TRAIN, NUM_VAL, NUM_TEST]
         )
 
         self.batch_size = batch_size

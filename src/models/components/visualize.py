@@ -26,6 +26,7 @@ from scipy import stats
 from src.dataio import akwd_dataset  # ,DataLoader  # 追加
 from src.dataio import akwd_datamodule
 from tqdm import tqdm
+import time
 
 import warnings
 
@@ -73,12 +74,15 @@ class EvalModelInit:
         with torch.no_grad():
             self.model.eval()
             self.model.to(device)
-            # _mu, _log_var, wavetable = self.model(wav.to(device), attrs, latent_op)
-            wavetable, _, _, _, _ = self.model(wav.to(device), attrs, latent_op)
+            wav = wav.to(device)
+            # process speed
+            # start = time.perf_counter()
+            wavetable, _, _, _, _ = self.model(wav, attrs, latent_op)
+            # print(time.perf_counter() - start)
             self.model.train()
         return wavetable
 
-    def _scw_combain_spec(self, scw, duplicate_num=6):
+    def _scw_combain_spec(self, scw, duplicate_num=6, db=True):
         scw = scw.reshape(600)  # [1,1,600] -> [600] #あとで直す
         # print("_scw2spectrum3",x.shape)
 
@@ -90,11 +94,11 @@ class EvalModelInit:
                 tmp = torch.cat([tmp, scw])
                 # print("2",tmp.shape)
 
-        spec_x = self._specToDB(tmp.cpu())  # [3600] -> [1801,1]
+        spec_x = self._specToDB(tmp.cpu(), db=db)  # [3600] -> [1801,1]
         # print("test",spec_x.shape)
         return spec_x
 
-    def _specToDB(self, waveform: torch.Tensor):
+    def _specToDB(self, waveform: torch.Tensor, db=True):
         sample_points = len(waveform)
         spec = torchaudio.transforms.Spectrogram(
             n_fft=sample_points,  # 時間幅
@@ -105,14 +109,26 @@ class EvalModelInit:
             window_fn=torch.ones,
             normalized=True,
             onesided=True,
-            power=1.0,
+            power=2.0,
         )
 
-        ToDB = torchaudio.transforms.AmplitudeToDB(stype="power", top_db=None)
+        # ToDB = torchaudio.transforms.AmplitudeToDB(stype="power", top_db=None)
 
         combain_x = waveform.reshape(1, -1)  # [3600] -> [1,3600]
-        combain_x_todb = ToDB(combain_x)
-        spec_x = spec(combain_x_todb)  # [1,3600] -> [901,1???]
+        # combain_x = ToDB(combain_x)
+        spec_x = spec(combain_x)  # [1,3600] -> [901,1???]
+
+        if db is True:
+            spec_x = 10 * torch.log10(spec_x)
+            spec_x = torch.clamp(spec_x, min=-80)
+            # Q:Maxの値は？
+            # A: 0.0
+            # Q: なぜですか？
+            # A: 10*log10(1) = 0
+            # Q:Minの値は？
+            # A: -80.0
+            # Q: なぜですか？
+            # A: 10*log10(0.0001) = -80
 
         return spec_x
 
@@ -273,13 +289,10 @@ class FeatureExatractorInit(EvalModelInit):
         wavetable,
         attrs,
         label_name: str,
-        normalize_method: str,
-        dm_num: int = 0,
         resolution_num: int = 10,
         bias: int = 1,
         mode: str = "cond",
     ):
-
         cond_label = []
         est_label = []
 
@@ -296,7 +309,6 @@ class FeatureExatractorInit(EvalModelInit):
 
         # ラベルを段階的に設定
         for i in range(resolution_num + 1):
-
             if mode == "cond":
                 # print("cond")
                 attrs[label_name] = (1 / resolution_num) * i  # 0~1の範囲でラベルを設定
@@ -312,17 +324,11 @@ class FeatureExatractorInit(EvalModelInit):
             else:
                 raise ValueError("mode must be cond or latent")
 
-            x = self.model_eval(
-                wav=wavetable.unsqueeze(0), attrs=attrs, latent_op=latent_op
-            )
+            x = self.model_eval(wav=wavetable.unsqueeze(0), attrs=attrs, latent_op=latent_op)
             # 波形を6つ繋げる
             # print(x)
             six_cycle_wavetable = scw_combain(x.squeeze(0), duplicate_num=15)
-            est_label.append(
-                self.est_label_eval(
-                    six_cycle_wavetable, attrs, label_name=label_name, dbFlg=False
-                )
-            )
+            est_label.append(self.est_label_eval(six_cycle_wavetable, attrs, label_name=label_name, dbFlg=False))
 
         return cond_label, est_label
 
@@ -338,10 +344,7 @@ class FeatureExatractorInit(EvalModelInit):
 
         plt.legend((p1[0], p2[0]), ("traget label", "estimate label"), loc=2)
 
-    def est_label_eval(
-        self, wavetable: torch.Tensor, attrs: dict, label_name: str, dbFlg: bool = False
-    ):
-
+    def est_label_eval(self, wavetable: torch.Tensor, attrs: dict, label_name: str, dbFlg: bool = False):
         bright, ritch, odd, zcr = self.dco_extractFeatures(wavetable, 15)
 
         if label_name == "dco_brightness":
@@ -389,8 +392,6 @@ class FeatureExatractorInit(EvalModelInit):
                         wavetable,
                         attrs,
                         attrs_label[i - 2],
-                        normalize_method=None,
-                        dm_num=j,
                         resolution_num=resolution_num,
                         bias=bias,
                         mode=mode,
