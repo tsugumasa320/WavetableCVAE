@@ -5,7 +5,8 @@ hydra:
     dir: ./log/hydra/${model._target_}/${now:%Y%m%d}T${now:%H%M%S}-${trainer.max_epochs}epoch
 
 model:
-  _target_: "src.models.arvae.LitCVAE"
+  # _target_: "src.models.arvae.LitCVAE"
+  _target_: "src.models.cvae.LitCVAE"
 
   ## 4layer
   # enc_cond_layer: [True, True, True, True] # [Falase, False, False, False]
@@ -58,7 +59,7 @@ datamodule:
 
 logger:
   _target_: pytorch_lightning.loggers.wandb.WandbLogger
-  save_dir: null
+  # save_dir: null # macだとnullは無効.コメントアウトしないとエラーになる
   offline: False
   id: null # pass correct id to resume experiment!
   anonymous: null # enable anonymous logging
@@ -72,7 +73,7 @@ logger:
 
 trainer:
   _target_: pytorch_lightning.Trainer
-  max_epochs: 30001
+  max_epochs: 1
   enable_checkpointing: True
   auto_lr_find: True
   auto_scale_batch_size: True
@@ -84,7 +85,7 @@ callbacks:
 
 resume: null # "/home/ubuntu/My-reserch-project/WavetableCVAE/vjrxrzma/checkpoints/epoch=17293-step=2702205.ckpt"
 # "/workspace/My-reserch-project/WavetableCVAE/rp6j1uld/checkpoints/epoch=1999-step=198000.ckpt"
-save: False
+save: True
 seed: 42
 debug_mode: False
 comment: null

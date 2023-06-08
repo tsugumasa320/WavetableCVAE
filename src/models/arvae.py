@@ -60,7 +60,7 @@ class LitCVAE(pl.LightningModule):
         self.warmup = warmup
         self.min_kl = min_kl
         self.max_kl = max_kl
-        self.cycle_size = self.warmup//cycle_num
+        self.cycle_size = self.warmup // cycle_num
 
         self.wave_loss_coef = wave_loss_coef
 
@@ -82,13 +82,11 @@ class LitCVAE(pl.LightningModule):
             lin_layer_dim=dec_lin_layer_dim,
         )
 
-        self.loudness = submodule.Loudness(
-            sample_rate, block_size=sample_points * duplicate_num, n_fft=sample_points * duplicate_num
-        )
+        self.loudness = submodule.Loudness(sample_rate, block_size=sample_points * duplicate_num, n_fft=sample_points * duplicate_num)
         self.distance = submodule.Distance(scales=[sample_points * duplicate_num], overlap=0)
 
     def forward(
-        self, x: torch.Tensor, attrs: dict, latent_op: dict = None
+        self, x: torch.Tensor, attrs: torch.Tensor, latent_op: dict = None
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:  # Use for inference only (separate from training_step)
         z_dist = self.encoder(x, attrs)
         z_tilde, z_prior, prior_dist = self._reparametrize(z_dist)
@@ -146,17 +144,16 @@ class LitCVAE(pl.LightningModule):
 
     # https://github.com/acids-ircam/RAVE/blob/ff10b4f9843d530f60b6f108a9f0ff874a1a20b6/rave/core.py#L100
     def get_beta_kl(self, step, warmup, min_beta, max_beta):
-        if step > warmup: return max_beta
+        if step > warmup:
+            return max_beta
         t = step / warmup
         min_beta_log = np.log(min_beta)
         max_beta_log = np.log(max_beta)
         beta_log = t * (max_beta_log - min_beta_log) + min_beta_log
         return np.exp(beta_log)
 
-
     def get_beta_kl_cyclic(self, step, cycle_size, min_beta, max_beta):
         return self.get_beta_kl(step % cycle_size, cycle_size // 2, min_beta, max_beta)
-
 
     def get_beta_kl_cyclic_annealed(self, step, cycle_size, warmup, min_beta, max_beta):
         min_beta = self.get_beta_kl(step, warmup, min_beta, max_beta)
@@ -164,9 +161,7 @@ class LitCVAE(pl.LightningModule):
 
     def _common_step(self, batch: tuple, batch_idx: int, stage: str) -> torch.Tensor:  # ロス関数定義.推論時は通らない
         x, attrs = self._prepare_batch(batch)
-        output, z_dist, prior_dist, z_tilde, z_prior = self.forward(
-            x, attrs
-        )  # output, z_dist, prior_dist, z_tilde, z_prior
+        output, z_dist, prior_dist, z_tilde, z_prior = self.forward(x, attrs)  # output, z_dist, prior_dist, z_tilde, z_prior
         assert x.shape == output.shape, f"in: {x.shape} != out: {output.shape}"
 
         x = x.repeat(1, 1, self.duplicate_num)
@@ -220,8 +215,20 @@ class LitCVAE(pl.LightningModule):
 
         return self.loss
 
+    def _to_tensor(self, x: torch.Tensor) -> torch.Tensor:
+        if isinstance(x, torch.Tensor):
+            return x.to(device, dtype=torch.float32)
+        return torch.tensor(x, device=device, dtype=torch.float32)
+
     def _prepare_batch(self, batch: tuple) -> Tuple[torch.Tensor, torch.Tensor]:  # batch準備
         x, attrs = batch
+
+        brightness = self._to_tensor(attrs["dco_brightness"])
+        ritchness = self._to_tensor(attrs["dco_richness"])
+        oddenergy = self._to_tensor(attrs["dco_oddenergy"])
+
+        # 3つの特徴量を結合
+        attrs = torch.stack([brightness, ritchness, oddenergy], dim=1)
         return x, attrs
 
     def configure_optimizers(self):  # Optimizerと学習率(lr)設定
@@ -238,11 +245,12 @@ class Base(nn.Module):
             return x.to(device, dtype=torch.float32)
         return torch.tensor(x, device=device, dtype=torch.float32)
 
-    def _conv_conditioning(self, x: torch.Tensor, attrs: dict) -> torch.Tensor:
-        brightness = self._to_tensor(attrs["dco_brightness"])
-        ritchness = self._to_tensor(attrs["dco_richness"])
-        oddenergy = self._to_tensor(attrs["dco_oddenergy"])
-        # zcr = self._to_tensor(attrs["dco_zcr"])
+    def _conv_conditioning(self, x: torch.Tensor, attrs: torch.Tensor) -> torch.Tensor:
+        print("attrs in conv cond", attrs.shape)
+
+        brightness = attrs[0][0]
+        ritchness = attrs[0][1]
+        oddenergy = attrs[0][2]
 
         brightness_y = brightness.view(-1, 1, 1).expand(-1, 1, x.shape[2])
         ritchness_y = ritchness.view(-1, 1, 1).expand(-1, 1, x.shape[2])
@@ -253,27 +261,24 @@ class Base(nn.Module):
 
         return x
 
-    def _lin_conditioning(self, x: torch.Tensor, attrs: dict) -> torch.Tensor:
+    def _lin_conditioning(self, x: torch.Tensor, attrs: torch.Tensor) -> torch.Tensor:
         """Linear conditioning.
 
         Args:
             x (torch.Tensor): Input tensor.
             attrs (dict): Attributes.
         """
-
-        brightness = self._to_tensor(attrs["dco_brightness"])
-        ritchness = self._to_tensor(attrs["dco_richness"])
-        oddenergy = self._to_tensor(attrs["dco_oddenergy"])
-        # zcr = self._to_tensor(attrs["dco_zcr"])
+        print("attrs in lin cond", attrs.shape)
+        brightness = attrs[0][0]
+        ritchness = attrs[0][1]
+        oddenergy = attrs[0][2]
 
         # (batch_size, L)
         brightness = brightness.view(-1, 1).expand(x.shape[0], 1)
         ritchness = ritchness.view(-1, 1).expand(x.shape[0], 1)
         oddenergy = oddenergy.view(-1, 1).expand(x.shape[0], 1)
-        # zcr = zcr.view(-1, 1).expand(x.shape[0], 1)
 
         # (batch_size, 1, L)
-        # x = torch.cat([x, brightness, ritchness, oddenergy, zcr], dim=1)
         x = torch.cat([x, brightness, ritchness, oddenergy], dim=1)
 
         return x
@@ -332,23 +337,10 @@ class Encoder(Base):
             self.enc_mean = nn.Linear(lin_layer_dim[2] + 3, lin_layer_dim[3])
             self.enc_scale = nn.Linear(lin_layer_dim[2] + 3, lin_layer_dim[3])
 
-    """
-    def lin_layer(self, x):
-
-        x = x.view(x.shape[0], -1)
-        lin = nn.Sequential(
-            nn.Linear(in_features=x.shape[1], out_features=), # 未設定
-            nn.LeakyReLU()
-        ).to(device)
-
-        x = lin(x)
-        return x
-    """
-
     def forward(self, x, attrs):
         for i, layer in enumerate(self.conv_layers):
             if self.cond_layer[i]:
-                x = self._conditioning(x, attrs)
+                x = self._conv_conditioning(x, attrs)
             x = layer(x)
 
         x = self.flatten(x)
@@ -358,7 +350,6 @@ class Encoder(Base):
         z_mean = self.enc_mean(x)
         z_scale = self.enc_scale(x)
         z_std = nn.functional.softplus(z_scale) + 1e-4
-
         z_distribution = distributions.Normal(loc=z_mean, scale=z_std)
 
         return z_distribution
@@ -400,9 +391,7 @@ class Decoder(Base):
             _stride = stride[i]
 
             layer = nn.Sequential(
-                submodule.UpSampling(
-                    in_channels=_in_channels, out_channels=_out_channels, kernel_size=_kernel_size, stride=_stride
-                ),
+                submodule.UpSampling(in_channels=_in_channels, out_channels=_out_channels, kernel_size=_kernel_size, stride=_stride),
                 submodule.ResBlock(_out_channels, 3),
             )
             self.deconv_layers.append(layer)
