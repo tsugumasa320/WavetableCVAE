@@ -1,6 +1,6 @@
 # WavetableCVAE
 
-![overview](https://github.com/tsugumasa320/WavetableCVAE/assets/35299183/44f61103-0e70-47ee-8cf5-39a7b4892dde)
+<img width="1030" alt="overview" src="https://github.com/tsugumasa320/WavetableCVAE/assets/35299183/a7a33304-c30e-4538-86d0-75f22ad910e2">
 
 # Abstract
 
