@@ -5,13 +5,12 @@ https://github.com/tsugumasa320/WavetableCVAE/assets/35299183/4d20032b-a8cc-43d6
 
 # Abstract
 
-“WavetableCVAE”は，ウェーブテーブルをCVAEによって条件付け生成する事で，直感的な音色制御を行う試みです．
-[^1]: ウェーブテーブル合成に用いられる1周期分の波形.参考(https://en.wikipedia.org/wiki/Wavetable_synthesis)
+WavetableCVAE" is an attempt to provide intuitive timbre control by generating wavetables conditionally with CVAE.
 
+The code for the deep learning part is available here.
 
-深層学習部分のコードを公開しています.
+Plug-ins for DAW are available in [this repository](https://github.com/tsugumasa320/WavetableCVAE_Plugin/tree/main).
 
-DAWで使えるプラグインは[こちらのリポジトリ](https://github.com/tsugumasa320/WavetableCVAE_Plugin/tree/main)です．
 
 # Requirement
 
@@ -41,12 +40,12 @@ DAWで使えるプラグインは[こちらのリポジトリ](https://github.co
 
 # Installation
 
-### 仮想環境作成
+### Creation of Virtual Environment
 ```bash
 conda create --name <name> python=3.8.5 -y
 conda activate <name>
 ```
-### インストール
+### Install
 
 ```bash
 pip install -r requirements.txt
@@ -60,20 +59,21 @@ pip install -r requirements.txt
 python ./src/train.py
 ```
 
-### 設定変更の方法
+### How to change settings
 
-conf -> config.yaml内の設定を変えることで、
-各所パラメータを変更可能
+By changing the settings in conf -> config.yaml,
+Parameters can be changed in various places
 
 # Note
 
-データセットは初回に自動的にダウンロードされます
+The dataset is automatically downloaded the first time.
 
-CPU,GPUの切り替えも自動的に判断する設定になっています
+CPU and GPU switching is also automatically determined.
 
 # License
 
 "WavetableCVAE" is under [CC BY-NC 4.0 license](https://creativecommons.org/licenses/by-nc/4.0/deed.ja).
 
 # Acknowledgment
-本研究は第12期サイボウズ・ラボユースの支援を受けました．
+This research was supported by the 12th Cybozu Labo Youth.
+

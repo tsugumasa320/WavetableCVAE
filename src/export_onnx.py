@@ -43,7 +43,7 @@ def Convert_ONNX(model):
 
 if __name__ == "__main__":
     # ckpt_path = "/Users/tsugumasayutani/Documents/GitHub/My-reserch-project/ckpt/2023-04-23-18:18:10.452469-LitCVAE-30000.ckpt"
-    ckpt_path = "/Users/tsugumasayutani/Documents/GitHub/My-reserch-project/torchscript/2023-06-08-18:16:43.492661-LitCVAE-1epoch./wandb/run-20230608_181338-16a0y977/files.ckpt"
+    ckpt_path = "/Users/tsugumasayutani/Documents/GitHub/My-reserch-project/torchscript/files.ckpt"
 
     # モデルの読み込み
     model = LitCVAE.load_from_checkpoint(
