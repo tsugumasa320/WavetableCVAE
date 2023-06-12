@@ -8,9 +8,10 @@ https://github.com/tsugumasa320/WavetableCVAE/assets/35299183/4d20032b-a8cc-43d6
 “WavetableCVAE”は，ウェーブテーブルをCVAEによって条件付け生成する事で，直感的な音色制御を行う試みです．
 [^1]: ウェーブテーブル合成に用いられる1周期分の波形.参考(https://en.wikipedia.org/wiki/Wavetable_synthesis)
 
-DAWで使える[プラグイン](https://github.com/tsugumasa320/WavetableCVAE_Plugin/tree/main)をこちらで提供しています．
 
-第137回MUS・第147回SLP合同研究発表会で，"CVAEを用いたウェーブテーブル合成の意味的な音色制御"として発表しました
+深層学習部分のコードを公開しています.
+
+DAWで使えるプラグインは[こちらのリポジトリ](https://github.com/tsugumasa320/WavetableCVAE_Plugin/tree/main)です．
 
 # Requirement
 
