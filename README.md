@@ -13,7 +13,7 @@ Plug-ins for DAW are available in [this repository](https://github.com/tsugumasa
 
 Japanese paper [here](https://ipsj.ixsq.nii.ac.jp/ej/?action=pages_view_main&active_action=repository_view_main_item_detail&item_id=226379&item_no=1&page_id=13&block_id=8) 
 
-English paper in preparation.
+English paper [here](https://arxiv.org/abs/2410.18628)
 
 
 # Requirement
